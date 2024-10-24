@@ -20,10 +20,11 @@ pub const VERTICES = [_]c.GLfloat{
 pub const EDGES = [_]c.GLuint{
     1, 2, 0, 1, 3, 2, // Front
     5, 6, 4, 5, 7, 6, // Back
+    
     7, 2, 3, 7, 6, 2, // Top
-    5, 0, 1, 5, 4, 0, // Bottom
-    4, 2, 0, 4, 6, 2, // Left
-    5, 3, 1, 5, 7, 3   // Right
+    // 5, 0, 1, 5, 4, 0, // Bottom
+    // 4, 2, 0, 4, 6, 2, // Left
+    // 5, 3, 1, 5, 7, 3   // Right
 };
 
 pub const BlockKind = enum(u8) {

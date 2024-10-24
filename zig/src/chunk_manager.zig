@@ -79,17 +79,6 @@ pub fn deinit(self: *Self) void {
     self.chunk_shader.deinit();
 }
 
-pub fn adjustPerspective(self: *Self, width: f64, height: f64) void {
-    const perspective = Matrix.perspective(60, @floatCast(width / height), -1, 100);
-    c.glUniformMatrix4fv(
-        self.chunk_shader.uniform("projection"),
-        1,
-        c.GL_FALSE,
-        @ptrCast(&perspective[0])
-    );
-    std.debug.print("{d}\n", .{perspective});
-}
-
 pub fn addChunk(self: *Self) !void {
     const chunk = try self.allocator.create(Chunk);
     chunk.* = Chunk.init(self.ebo, self.base_vbo);

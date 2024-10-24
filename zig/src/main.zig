@@ -3,18 +3,38 @@ const c = @cImport({
 	@cInclude("GLFW/glfw3.h");
 });
 const std = @import("std");
+const math = @import("math");
 const ChunkManager = @import("chunk_manager.zig");
 
 const Allocator = std.mem.Allocator;
 
-const INITIAL_WIDTH: c_int = 1000;
-const INITIAL_HEIGHT: c_int = 700;
+const Matrix = math.Matrix;
+const MatrixPrimitive = math.MatrixPrimitive;
+const FLOAT = math.constants.FLOAT;
+
+const Options = struct {
+	initial_width: c_int = 1000,
+	initial_height: c_int = 700,
+
+	width: c_int = 1000,
+	height: c_int = 700,
+
+	fov: FLOAT = 60,
+	near: FLOAT = -5,
+	far: FLOAT = 100,
+	perspective: MatrixPrimitive = undefined,
+
+	// pub fn from(path: []const u8) !Self {
+	// }
+};
 
 pub fn main() !void {
 	var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 	defer std.debug.assert(gpa.deinit() == .ok);
 
 	const allocator = gpa.allocator();
+
+	var options = Options{};
 
 	if (c.glfwInit() == c.GL_FALSE)
 		return error.InitializationError;
@@ -24,8 +44,8 @@ pub fn main() !void {
 		c.glfwWindowHint(c.GLFW_OPENGL_FORWARD_COMPAT, c.GL_TRUE);
 	
 	const window = c.glfwCreateWindow(
-		INITIAL_WIDTH,
-		INITIAL_HEIGHT,
+		options.initial_width,
+		options.initial_height,
 		"Hackcraft",
 		null,
 		null
@@ -51,15 +71,47 @@ pub fn main() !void {
 	var chunks = ChunkManager.init(allocator);
 	defer chunks.deinit();
 
-	chunks.adjustPerspective(
-		@floatFromInt(INITIAL_WIDTH),
-		@floatFromInt(INITIAL_HEIGHT)
-	);
 	try chunks.addChunk();
 
+	options.perspective = Matrix.perspective(
+		options.fov,
+		@as(FLOAT, @floatFromInt(options.width)) / @as(FLOAT, @floatFromInt(options.height)),
+		options.near,
+		options.far
+	);
+	c.glUniformMatrix4fv(
+		chunks.chunk_shader.uniform("projection"),
+		1,
+		c.GL_FALSE,
+		@ptrCast(&options.perspective[0])
+	);
+
+	var x: FLOAT = 0;
+
+	var prev = c.glfwGetTime();
 	while (c.glfwWindowShouldClose(window) == c.GL_FALSE) {
 		c.glClearColor(0.0, 0.0, 0.0, 1.0);
 		c.glClear(c.GL_COLOR_BUFFER_BIT);
+
+		const timestamp = c.glfwGetTime();
+		const dt = timestamp - prev;
+		prev = timestamp;
+
+		if (x > 45) x += 45.0 * @as(FLOAT, @floatCast(dt));
+		var rotate = Matrix.product(
+			options.perspective,
+			Matrix.xRotation(0)
+		);
+		rotate = Matrix.product(
+			rotate,
+			Matrix.zRotation(0)
+		);
+		c.glUniformMatrix4fv(
+			chunks.chunk_shader.uniform("projection"),
+			1,
+			c.GL_FALSE,
+			@ptrCast(&rotate[0])
+		);
 
    		c.glPolygonMode(c.GL_FRONT_AND_BACK, c.GL_LINE);
 		chunks.render();
