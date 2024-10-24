@@ -7,8 +7,8 @@ const ChunkManager = @import("chunk_manager.zig");
 
 const Allocator = std.mem.Allocator;
 
-const INITIAL_WIDTH: c_int = 1200;
-const INITIAL_HEIGHT: c_int = 800;
+const INITIAL_WIDTH: c_int = 1000;
+const INITIAL_HEIGHT: c_int = 700;
 
 pub fn main() !void {
 	var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -43,12 +43,26 @@ pub fn main() !void {
 		) == c.GL_FALSE
 	) return error.InitializationError;
 
+	// c.glEnable(c.GL_CULL_FACE);
+	// c.glEnable(c.GL_DEPTH);
+	// c.glEnable(c.GL_BLEND);
+	// c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
+
 	var chunks = ChunkManager.init(allocator);
 	defer chunks.deinit();
+
+	chunks.adjustPerspective(
+		@floatFromInt(INITIAL_WIDTH),
+		@floatFromInt(INITIAL_HEIGHT)
+	);
+	try chunks.addChunk();
 
 	while (c.glfwWindowShouldClose(window) == c.GL_FALSE) {
 		c.glClearColor(0.0, 0.0, 0.0, 1.0);
 		c.glClear(c.GL_COLOR_BUFFER_BIT);
+
+   		c.glPolygonMode(c.GL_FRONT_AND_BACK, c.GL_LINE);
+		chunks.render();
 
 		c.glfwSwapBuffers(window);
 		c.glfwPollEvents();

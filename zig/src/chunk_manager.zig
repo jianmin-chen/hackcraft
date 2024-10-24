@@ -6,42 +6,99 @@ const c = @cImport({
     @cInclude("GLFW/glfw3.h");
 });
 const std = @import("std");
+const Matrix = @import("math").Matrix;
+const block = @import("block.zig");
 const Chunk = @import("chunk.zig");
+const Shader = @import("shader.zig");
 
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
+const assert = std.debug.assert;
+
+const BASE = block.VERTICES;
+const INDICES = block.EDGES;
+
+const vertex = Chunk.vertex;
+const fragment = Chunk.fragment;
 
 const Self = @This();
 
 allocator: Allocator,
 chunks: ArrayList(*Chunk),
 
-ebo: c_uint,
 base_vbo: c_uint,
+ebo: c_uint,
+
+chunk_shader: Shader,
 
 pub fn init(allocator: Allocator) Self {
-    var ebo: c_uint = undefined;
     var base_vbo: c_uint = undefined;
-
-    c.glGenBuffers(1, &ebo);
+    var ebo: c_uint = undefined;
 
     c.glGenBuffers(1, &base_vbo);
+    c.glBindBuffer(c.GL_ARRAY_BUFFER, base_vbo);
+    c.glBufferData(
+        c.GL_ARRAY_BUFFER,
+        @sizeOf(c.GLfloat) * BASE.len,
+        @ptrCast(&BASE[0]),
+        c.GL_STATIC_DRAW
+    );
+
+    c.glGenBuffers(1, &ebo);
+    c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, ebo);
+    c.glBufferData(
+        c.GL_ELEMENT_ARRAY_BUFFER,
+        @sizeOf(c.GLuint) * INDICES.len,
+        @ptrCast(&INDICES[0]),
+        c.GL_STATIC_DRAW
+    );
+
+    const chunk_shader = try Shader.compile(vertex, fragment);
 
     return .{
         .allocator = allocator,
         .chunks = ArrayList(*Chunk).init(allocator),
 
+        .base_vbo = base_vbo,
         .ebo = ebo,
-        .base_vbo = base_vbo
+
+        .chunk_shader = chunk_shader
     };
 }
 
 pub fn deinit(self: *Self) void {
     for (self.chunks.items) |chunk| {
         chunk.deinit();
+        self.allocator.destroy(chunk);
     }
     self.chunks.deinit();
 
     c.glDeleteBuffers(1, &self.ebo);
     c.glDeleteBuffers(1, &self.base_vbo);
+
+    self.chunk_shader.deinit();
+}
+
+pub fn adjustPerspective(self: *Self, width: f64, height: f64) void {
+    const perspective = Matrix.perspective(60, @floatCast(width / height), -1, 100);
+    c.glUniformMatrix4fv(
+        self.chunk_shader.uniform("projection"),
+        1,
+        c.GL_FALSE,
+        @ptrCast(&perspective[0])
+    );
+    std.debug.print("{d}\n", .{perspective});
+}
+
+pub fn addChunk(self: *Self) !void {
+    const chunk = try self.allocator.create(Chunk);
+    chunk.* = Chunk.init(self.ebo, self.base_vbo);
+    try self.chunks.append(chunk);
+}
+
+pub fn render(self: *Self) void {
+    self.chunk_shader.use();
+    for (self.chunks.items) |chunk| {
+        chunk.render();
+    }
 }

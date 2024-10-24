@@ -1,0 +1,1 @@
+pub const FLOAT = f32;

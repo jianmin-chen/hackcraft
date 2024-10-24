@@ -19,6 +19,14 @@ pub fn build(b: *Build) !void {
 		.optimize = optimize
 	});
 
+	math.addIncludePath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/glfw/3.4/include" });
+	math.addLibraryPath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/glfw/3.4/lib" });
+
+	math.addIncludePath(Build.LazyPath{ .cwd_relative = "./deps" });
+
+	math.linkFramework("OpenGL", .{});
+	math.linkSystemLibrary("glfw", .{});
+
 	main.root_module.addImport("math", math);
 
 	main.addIncludePath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/glfw/3.4/include" });

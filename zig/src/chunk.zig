@@ -9,10 +9,6 @@ const Allocator = std.mem.Allocator;
 
 pub const CHUNK_SIZE = 16;
 
-pub const INDICES: []c.GLuint = [_]c.GLuint{
-
-};
-
 pub const vertex = 
     \\#version 330 core
     \\
@@ -20,18 +16,23 @@ pub const vertex =
     \\
     \\uniform mat4 projection;
     \\
+    \\out float z;
+    \\
     \\void main() {
     \\  gl_Position = projection * vec4(base, 1.0);
+    \\  z = base.z;
     \\}
 ;
 
 pub const fragment = 
     \\#version 330 core
     \\
+    \\in float z;
+    \\
     \\out vec4 out_color;
     \\
     \\void main() {
-    \\  out_color = vec4(1.0, 1.0, 1.0, 1.0); 
+    \\  out_color = vec4(z == 0.0 ? 1.0 : 0.0, 1.0, 1.0, 1.0); 
     \\}
 ;
 
@@ -54,7 +55,7 @@ pub fn init(ebo: c_uint, base_vbo: c_uint) Self {
     c.glGenVertexArrays(1, &vao);
     c.glGenBuffers(1, &vbo);
 
-    const self: .Self = .{
+    const self: Self = .{
         .blocks = [_]Block{Block.init()} ** CHUNK_SIZE ** CHUNK_SIZE,
         .vao = vao,
         .vbo = vbo,
@@ -65,10 +66,15 @@ pub fn init(ebo: c_uint, base_vbo: c_uint) Self {
     c.glBindBuffer(c.GL_ARRAY_BUFFER, base_vbo);
     c.glVertexAttribPointer(
         0,
-
+        3,
+        c.GL_FLOAT,
+        c.GL_FALSE,
+        3 * @sizeOf(c.GLfloat),
+        null
     );
+    c.glEnableVertexAttribArray(0);
 
-    _ = ebo;
+    c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, ebo);
 
     return self;
 }
@@ -79,11 +85,10 @@ pub fn deinit(self: *Self) void {
 
 pub fn render(self: *Self) void {
     c.glBindVertexArray(self.vao);
-    c.glDrawElementsInstanced(
-        c.GL_LINES,
-        @intCast(INDICES.len),
+    c.glDrawElements(
+        c.GL_TRIANGLES,
+        @intCast(Block.EDGES.len),
         c.GL_UNSIGNED_INT,
-        null,
-        @intCast(self.size)
+        null
     );
 }

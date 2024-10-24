@@ -19,30 +19,30 @@ pub fn compile(
     const info_log: [*c]u8 = @constCast(@ptrCast(&[_]u8{0} ** 512));
 
     const vertex_shader = c.glCreateShader(c.GL_VERTEX_SHADER);
-    c.glShaderSource(vertex_shader, 1, @ptrCast(vertex_shader_source), null);
+    c.glShaderSource(vertex_shader, 1, @ptrCast(&vertex_shader_source), null);
     c.glCompileShader(vertex_shader);
     defer c.glDeleteShader(vertex_shader);
 
     c.glGetShaderiv(vertex_shader, c.GL_COMPILE_STATUS, &success);
     if (success == c.GL_FALSE) {
-        c.glGetShaderLog(vertex_shader, 512, null, info_log);
+        c.glGetShaderInfoLog(vertex_shader, 512, null, info_log);
         panic("Crashed, error compiling vertex shader: {s}\n", .{info_log});
     }
 
     const fragment_shader = c.glCreateShader(c.GL_FRAGMENT_SHADER);
-    c.glShaderSource(fragment_shader, 1, @ptrCast(fragment_shader_source), null);
+    c.glShaderSource(fragment_shader, 1, @ptrCast(&fragment_shader_source), null);
     c.glCompileShader(fragment_shader);
     defer c.glDeleteShader(fragment_shader);
 
-    c.glGetShaderiv(fragment_shader, c.GL_COMPILE_STATUS, &success);
+    c.glGetShaderiv(fragment_shader, c.GL_LINK_STATUS, &success);
     if (success == c.GL_FALSE) {
-        c.glGetShaderLog(fragment_shader, 512, null, info_log);
+        c.glGetShaderInfoLog(fragment_shader, 512, null, info_log);
         panic("Crashed, error compiling fragment shader: {s}\n", .{info_log});
     }
 
     const shader_program = c.glCreateProgram();
     c.glAttachShader(shader_program, vertex_shader);
-    c.glAttachShader(fragment_shader, fragment_shader);
+    c.glAttachShader(shader_program, fragment_shader);
     c.glLinkProgram(shader_program);
 
     c.glGetProgramiv(shader_program, c.GL_COMPILE_STATUS, &success);
