@@ -16,23 +16,18 @@ pub const vertex =
     \\
     \\uniform mat4 projection;
     \\
-    \\out float z;
-    \\
     \\void main() {
     \\  gl_Position = projection * vec4(base, 1.0);
-    \\  z = base.z;
     \\}
 ;
 
 pub const fragment = 
     \\#version 330 core
     \\
-    \\in float z;
-    \\
     \\out vec4 out_color;
     \\
     \\void main() {
-    \\  out_color = vec4(z == 0.0 ? 1.0 : 0.0, 1.0, 1.0, 1.0); 
+    \\  out_color = vec4(1.0, 1.0, 1.0, 1.0); 
     \\}
 ;
 
@@ -85,10 +80,11 @@ pub fn deinit(self: *Self) void {
 
 pub fn render(self: *Self) void {
     c.glBindVertexArray(self.vao);
-    c.glDrawElements(
-        c.GL_TRIANGLES,
-        @intCast(Block.EDGES.len),
-        c.GL_UNSIGNED_INT,
-        null
-    );
+    c.glDrawArrays(c.GL_TRIANGLES, 0, 36);
+    // c.glDrawElements(
+    //     c.GL_TRIANGLES,
+    //     @intCast(Block.EDGES.len),
+    //     c.GL_UNSIGNED_INT,
+    //     null
+    // );
 }

@@ -15,6 +15,15 @@ pub const Matrix = struct {
         };
     }
 
+    pub fn translation(x: FLOAT, y: FLOAT, z: FLOAT) MatrixPrimitive {
+        return [_][4]FLOAT{
+            [4]FLOAT{ 1, 0, 0, 0 },
+            [4]FLOAT{ 0, 1, 0, 0 },
+            [4]FLOAT{ 0, 0, 1, 0 },
+            [4]FLOAT{ x, y, z, 1 }
+        };
+    }
+
     pub fn xRotation(angle: FLOAT) MatrixPrimitive {
         const rad = math.degreesToRadians(angle);
         const c = math.cos(rad);
@@ -23,6 +32,18 @@ pub const Matrix = struct {
             [4]FLOAT{ 1, 0, 0, 0 },
             [4]FLOAT{ 0, c, s, 0 },
             [4]FLOAT{ 0, -s, c, 0 },
+            [4]FLOAT{ 0, 0, 0, 1 }
+        };
+    }
+
+    pub fn yRotation(angle: FLOAT) MatrixPrimitive {
+        const rad = math.degreesToRadians(angle);
+        const c = math.cos(rad);
+        const s = math.sin(rad);
+        return [_][4]FLOAT{
+            [4]FLOAT{ c, 0, -s, 0 },
+            [4]FLOAT{ 0, 1, 0, 0 },
+            [4]FLOAT{ s, 0, c, 0 },
             [4]FLOAT{ 0, 0, 0, 1 }
         };
     }
@@ -47,10 +68,10 @@ pub const Matrix = struct {
     ) MatrixPrimitive {
         const f = math.tan(math.degreesToRadians(fov) / 2);
         return [_][4]FLOAT{
-            [4]FLOAT{ 1.0 / (aspect * f), 0, 0, 0 },
-            [4]FLOAT{ 0, 1.0 / f, 0, 0 },
-            [4]FLOAT{ 0, 0, -1.0 * ((far + near) / (far - near)), -2.0 * ((far * near) / (far - near)) },
-            [4]FLOAT{ 0, 0, -1, 0 }
+            [4]FLOAT{ 1 / (aspect * f), 0, 0, 0 },
+            [4]FLOAT{ 0, 1 / f, 0, 0 },
+            [4]FLOAT{ 0, 0, -1 * (far + near) / (far - near), -1 },
+            [4]FLOAT{ 0, 0, -1 * (2.0 * far * near) / (far - near), 0 }
         };
     }
 

@@ -13,16 +13,29 @@ const MatrixPrimitive = math.MatrixPrimitive;
 const FLOAT = math.constants.FLOAT;
 
 const Options = struct {
+    debug: bool = true,
+
     initial_width: c_int = 1000,
     initial_height: c_int = 700,
 
     width: c_int = 1000,
     height: c_int = 700,
 
-    fov: FLOAT = 60,
-    near: FLOAT = -5,
+    fov: FLOAT = 45,
+    near: FLOAT = 0.1,
     far: FLOAT = 100,
     perspective: MatrixPrimitive = undefined,
+
+    const Self = @This();
+
+    pub fn adjustPerspective(self: *Self) void {
+        self.perspective = Matrix.perspective(
+            self.fov,
+            @as(FLOAT, @floatFromInt(self.width)) / @as(FLOAT, @floatFromInt(self.height)),
+            self.near,
+            self.far
+        );
+    }
 
     // pub fn from(path: []const u8) !Self {
     // }
@@ -42,7 +55,7 @@ pub fn main() !void {
     c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MINOR, 3);
     if (comptime @import("builtin").os.tag == .macos)
         c.glfwWindowHint(c.GLFW_OPENGL_FORWARD_COMPAT, c.GL_TRUE);
-    
+
     const window = c.glfwCreateWindow(
         options.initial_width,
         options.initial_height,
@@ -64,21 +77,14 @@ pub fn main() !void {
     ) return error.InitializationError;
 
     // c.glEnable(c.GL_CULL_FACE);
-    // c.glEnable(c.GL_DEPTH);
-    // c.glEnable(c.GL_BLEND);
-    // c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 
     var chunks = ChunkManager.init(allocator);
     defer chunks.deinit();
 
     try chunks.addChunk();
 
-    options.perspective = Matrix.perspective(
-        options.fov,
-        @as(FLOAT, @floatFromInt(options.width)) / @as(FLOAT, @floatFromInt(options.height)),
-        options.near,
-        options.far
-    );
+    options.adjustPerspective();
+    std.debug.print("{d}\n", .{options.perspective});
     c.glUniformMatrix4fv(
         chunks.chunk_shader.uniform("projection"),
         1,
@@ -97,23 +103,19 @@ pub fn main() !void {
         const dt = timestamp - prev;
         prev = timestamp;
 
-        if (x > 45) x += 45.0 * @as(FLOAT, @floatCast(dt));
-        var rotate = Matrix.product(
-            options.perspective,
-            Matrix.xRotation(0)
-        );
-        rotate = Matrix.product(
-            rotate,
-            Matrix.zRotation(0)
-        );
+        if (options.debug) {
+            std.debug.print("{d}\n", .{dt});
+        }
+
+        x += @floatCast(60 * dt);
         c.glUniformMatrix4fv(
             chunks.chunk_shader.uniform("projection"),
             1,
             c.GL_FALSE,
-            @ptrCast(&rotate[0])
+            @ptrCast(&Matrix.product(options.perspective, Matrix.zRotation(x))[0])
         );
 
-           c.glPolygonMode(c.GL_FRONT_AND_BACK, c.GL_LINE);
+        c.glPolygonMode(c.GL_FRONT_AND_BACK, c.GL_LINE);
         chunks.render();
 
         c.glfwSwapBuffers(window);
@@ -123,7 +125,7 @@ pub fn main() !void {
     c.glfwTerminate();
 }
 
-fn resize(window: ?*c.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {
+pub fn resize(window: ?*c.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {
     _ = window;
     c.glViewport(0, 0, width, height);
 }
