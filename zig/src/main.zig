@@ -13,7 +13,7 @@ const MatrixPrimitive = math.MatrixPrimitive;
 const FLOAT = math.constants.FLOAT;
 
 const Options = struct {
-    debug: bool = true,
+    debug: bool = false,
 
     initial_width: c_int = 1000,
     initial_height: c_int = 700,
@@ -84,12 +84,19 @@ pub fn main() !void {
     try chunks.addChunk();
 
     options.adjustPerspective();
-    std.debug.print("{d}\n", .{options.perspective});
     c.glUniformMatrix4fv(
         chunks.chunk_shader.uniform("projection"),
         1,
         c.GL_FALSE,
         @ptrCast(&options.perspective[0])
+    );
+
+    const translation = Matrix.translation(0, 0, -3.5);
+    c.glUniformMatrix4fv(
+        chunks.chunk_shader.uniform("transform"),
+        1,
+        c.GL_FALSE,
+        @ptrCast(&translation[0])
     );
 
     var x: FLOAT = 0;
@@ -109,10 +116,10 @@ pub fn main() !void {
 
         x += @floatCast(60 * dt);
         c.glUniformMatrix4fv(
-            chunks.chunk_shader.uniform("projection"),
+            chunks.chunk_shader.uniform("transform"),
             1,
             c.GL_FALSE,
-            @ptrCast(&Matrix.product(options.perspective, Matrix.zRotation(x))[0])
+            @ptrCast(&Matrix.product(translation, Matrix.yRotation(x))[0])
         );
 
         c.glPolygonMode(c.GL_FRONT_AND_BACK, c.GL_LINE);

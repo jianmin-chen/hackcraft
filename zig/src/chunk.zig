@@ -15,9 +15,10 @@ pub const vertex =
     \\layout (location = 0) in vec3 base;
     \\
     \\uniform mat4 projection;
+    \\uniform mat4 transform;
     \\
     \\void main() {
-    \\  gl_Position = projection * vec4(base, 1.0);
+    \\  gl_Position = projection * transform * vec4(base, 1.0);
     \\}
 ;
 
@@ -80,11 +81,10 @@ pub fn deinit(self: *Self) void {
 
 pub fn render(self: *Self) void {
     c.glBindVertexArray(self.vao);
-    c.glDrawArrays(c.GL_TRIANGLES, 0, 36);
-    // c.glDrawElements(
-    //     c.GL_TRIANGLES,
-    //     @intCast(Block.EDGES.len),
-    //     c.GL_UNSIGNED_INT,
-    //     null
-    // );
+    c.glDrawElements(
+        c.GL_TRIANGLES,
+        @intCast(Block.EDGES.len),
+        c.GL_UNSIGNED_INT,
+        null
+    );
 }
