@@ -24,7 +24,10 @@ const fragment = Chunk.fragment;
 const Self = @This();
 
 allocator: Allocator,
+
 chunks: ArrayList(*Chunk),
+paint_chunks: ArrayList(*Chunk),
+update_chunks: ArrayList(*Chunk),
 
 base_vbo: c_uint,
 ebo: c_uint,
@@ -57,7 +60,10 @@ pub fn init(allocator: Allocator) Self {
 
     return .{
         .allocator = allocator,
+
         .chunks = ArrayList(*Chunk).init(allocator),
+        .paint_chunks = ArrayList(*Chunk).init(allocator),
+        .update_chunks = ArrayList(*Chunk).init(allocator), 
 
         .base_vbo = base_vbo,
         .ebo = ebo,
@@ -73,6 +79,9 @@ pub fn deinit(self: *Self) void {
     }
     self.chunks.deinit();
 
+    self.paint_chunks.deinit();
+    self.update_chunks.deinit();
+
     c.glDeleteBuffers(1, &self.ebo);
     c.glDeleteBuffers(1, &self.base_vbo);
 
@@ -83,6 +92,14 @@ pub fn addChunk(self: *Self) !void {
     const chunk = try self.allocator.create(Chunk);
     chunk.* = Chunk.init(self.ebo, self.base_vbo);
     try self.chunks.append(chunk);
+    try self.paint_chunks.append(chunk);
+}
+
+pub fn update(self: *Self) void {
+    while (self.paint_chunks.items.len != 0) {
+        const chunk = self.paint_chunks.orderedRemove(0);
+        chunk.paint();
+    } 
 }
 
 pub fn render(self: *Self) void {

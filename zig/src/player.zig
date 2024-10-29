@@ -14,22 +14,14 @@ const Self = @This();
 const VIEW_DISTANCE: FLOAT = 144; 
 
 position: Vec3Primitive = Vec3Primitive{ 0, 0, 0 },
-camera: Vec3Primitive = Vec3Primitive{ -3, 0, 0 },
+camera: Vec3Primitive = Vec3Primitive{ 0, 0, -3 },
 
 yaw: FLOAT = 0,
 pitch: FLOAT = 0,
 
-pub fn cameraMatrix(self: *Self) MatrixPrimitive {
-    return Matrix.translation(
-        self.camera[0],
-        self.camera[1],
-        self.camera[2]
-    );
-}
-
 pub fn view(self: *Self) MatrixPrimitive {
     const target = Vec3Primitive{
-        self.position[0] + VIEW_DISTANCE,
+        self.position[0],
         self.position[1],
         self.position[2]
     };

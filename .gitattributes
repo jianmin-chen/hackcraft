@@ -1,1 +1,3 @@
 zig/deps/* linguist-vendored
+zig/deps/*.h linguist-vendored
+site/* linguist-vendored

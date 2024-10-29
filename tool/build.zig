@@ -8,10 +8,18 @@ pub fn build(b: *Build) !void {
 
     const main = b.addExecutable(.{
         .name = "site",
-        .root_source_file = b.path("src/main.zig"),
+        .root_source_file = b.path("src/site.zig"),
         .target = target,
         .optimize = optimize
     });
+
+    const md = b.addModule("md", .{
+        .root_source_file = b.path("src/md/root.zig"),
+        .target = target,
+        .optimize = optimize
+    });
+
+    main.root_module.addImport("md", md);
 
     b.installArtifact(main);
 

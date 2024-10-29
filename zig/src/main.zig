@@ -134,7 +134,10 @@ pub fn main() !void {
             @ptrCast(&Matrix.product(Matrix.zRotation(x), Matrix.xRotation(x))[0])
         );
 
-        c.glPolygonMode(c.GL_FRONT_AND_BACK, c.GL_LINE);
+        chunks.update();
+
+        if (options.debug) 
+            c.glPolygonMode(c.GL_FRONT_AND_BACK, c.GL_LINE);
         chunks.render();
 
         c.glfwSwapBuffers(window);
