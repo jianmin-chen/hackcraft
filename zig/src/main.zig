@@ -5,15 +5,16 @@ const c = @cImport({
 const std = @import("std");
 const math = @import("math");
 const ChunkManager = @import("chunk_manager.zig");
+const Player = @import("player.zig");
 
 const Allocator = std.mem.Allocator;
 
 const Matrix = math.Matrix;
 const MatrixPrimitive = math.MatrixPrimitive;
-const FLOAT = math.constants.FLOAT;
+const FLOAT = math.types.FLOAT;
 
 const Options = struct {
-    debug: bool = false,
+    debug: bool = true,
 
     initial_width: c_int = 1000,
     initial_height: c_int = 700,
@@ -78,6 +79,8 @@ pub fn main() !void {
 
     // c.glEnable(c.GL_CULL_FACE);
 
+    var player = Player{};
+
     var chunks = ChunkManager.init(allocator);
     defer chunks.deinit();
 
@@ -91,17 +94,20 @@ pub fn main() !void {
         @ptrCast(&options.perspective[0])
     );
 
-    const translation = Matrix.translation(0, 0, -3.5);
+    const camera = player.view();
+    const view = Matrix.inverse(camera);
     c.glUniformMatrix4fv(
-        chunks.chunk_shader.uniform("transform"),
+        chunks.chunk_shader.uniform("view"),
         1,
         c.GL_FALSE,
-        @ptrCast(&translation[0])
+        @ptrCast(&view[0])
     );
 
     var x: FLOAT = 0;
 
     var prev = c.glfwGetTime();
+    var accum: f64 = 0;
+    var frames: usize = 0;
     while (c.glfwWindowShouldClose(window) == c.GL_FALSE) {
         c.glClearColor(0.0, 0.0, 0.0, 1.0);
         c.glClear(c.GL_COLOR_BUFFER_BIT);
@@ -111,15 +117,21 @@ pub fn main() !void {
         prev = timestamp;
 
         if (options.debug) {
-            std.debug.print("{d}\n", .{dt});
+            frames += 1;
+            accum += dt;
+            if (accum >= 1.0) {
+                std.debug.print("{d} fps\n",  .{frames});
+                frames = 0;
+                accum = 0;
+            }
         }
 
-        x += @floatCast(60 * dt);
+        x += @floatCast(45 * dt);
         c.glUniformMatrix4fv(
-            chunks.chunk_shader.uniform("transform"),
+            chunks.chunk_shader.uniform("model"),
             1,
             c.GL_FALSE,
-            @ptrCast(&Matrix.product(translation, Matrix.yRotation(x))[0])
+            @ptrCast(&Matrix.product(Matrix.zRotation(x), Matrix.xRotation(x))[0])
         );
 
         c.glPolygonMode(c.GL_FRONT_AND_BACK, c.GL_LINE);
