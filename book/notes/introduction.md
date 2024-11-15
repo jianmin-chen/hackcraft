@@ -1,5 +1,9 @@
 Along the way you'll come along some callouts. They're fun to read (and write!) and sometimes they're useful.
 
+> By the way...
+>
+> You don't have to read this, but you might find the stuff here useful or a good starting point to explore a topic.
+
 > JC Nerds Out
 >
 > You don't have to read this. This is solely an aside I'm interested in and excited about. 

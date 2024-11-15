@@ -10,7 +10,7 @@ const ArrayList = std.ArrayList;
 
 const Float = math.types.Float;
 
-pub const CHUNK_LENGTH = 16;
+pub const CHUNK_LENGTH = 4;
 pub const CHUNK_SIZE = CHUNK_LENGTH * CHUNK_LENGTH * CHUNK_LENGTH;
 
 // Convenience constants for those reading the source code.
@@ -34,15 +34,14 @@ pub const vertex =
     \\
     \\uniform mat4 projection;
     \\uniform mat4 view;
-    \\uniform mat4 model;
     \\uniform float chunk_dimension;
     \\
     \\void main() {
-    \\  mat4 mvp = projection * view * model;
+    \\  mat4 transform = projection * view;
     \\  // If block == -1.0, it's essentially turned off.
     \\  // Give vertex shader a point that will be clipped.
     \\  gl_Position = block == -1.0 ? vec4(-2.0) :
-    \\                  mvp * vec4(base + chunk * chunk_dimension + 
+    \\                  transform * vec4(base + chunk * chunk_dimension + 
     \\                      vec3(
     \\                          mod(block, chunk_dimension),
     \\                          mod(floor(block / chunk_dimension), chunk_dimension),
@@ -180,12 +179,6 @@ pub fn update(self: *Self) void {
 
 pub fn render(self: *Self) void {
     c.glBindVertexArray(self.vao);
-    // c.glDrawElements(
-    //     c.GL_TRIANGLES,
-    //     @intCast(Block.EDGES.len),
-    //     c.GL_UNSIGNED_INT,
-    //     null
-    // );
     c.glDrawElementsInstanced(
         c.GL_TRIANGLES,
         @intCast(Block.EDGES.len),
