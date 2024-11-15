@@ -1,1 +1,0 @@
-Basic concept: go from rendering a singular cube in screen space -> rendering a singular cube with perspective using perspective projection, the player is the came=ra

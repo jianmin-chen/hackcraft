@@ -15,24 +15,14 @@ pub fn build(b: *Build) !void {
 
     const math = b.addModule("math", .{
         .root_source_file = b.path("src/math/root.zig"),
-        .target = target,
-        .optimize = optimize
     });
-
-    math.addIncludePath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/glfw/3.4/include" });
-    math.addLibraryPath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/glfw/3.4/lib" });
-
-    math.addIncludePath(Build.LazyPath{ .cwd_relative = "./deps" });
-
-    math.linkFramework("OpenGL", .{});
-    math.linkSystemLibrary("glfw", .{});
 
     main.root_module.addImport("math", math);
 
     main.addIncludePath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/glfw/3.4/include" });
     main.addLibraryPath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/glfw/3.4/lib" });
 
-    main.addIncludePath(Build.LazyPath{ .cwd_relative = "./deps" });
+    main.addIncludePath(b.path("./deps"));
     main.addCSourceFile(.{
         .file = b.path("./deps/glad.c"),
         .flags = &.{}

@@ -1,6 +1,5 @@
 const c = @cImport({
     @cInclude("glad/glad.h");
-    @cInclude("GLFW/glfw3.h");
 });
 const std = @import("std");
 const math = @import("math");
@@ -9,34 +8,46 @@ const Block = @import("block.zig");
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 
-const FLOAT = math.types.FLOAT;
+const Float = math.types.Float;
 
 pub const CHUNK_LENGTH = 16;
 pub const CHUNK_SIZE = CHUNK_LENGTH * CHUNK_LENGTH * CHUNK_LENGTH;
 
+// Convenience constants for those reading the source code.
+// Also makes it easy to reason about and debug.
+pub const VERTEX_SIZE = 3;
 pub const OFFSET_SIZE = 3;
 pub const INDEX_SIZE = 1;
 pub const INSTANCE_SIZE = OFFSET_SIZE + INDEX_SIZE;
 
+// There are a couple of optimizations
+// that I wanted to make but decided against it
+// due to the purpose of this codebase, like:
+//
+// * Packing values where possible into a uint
 pub const vertex = 
     \\#version 330 core
     \\
     \\layout (location = 0) in vec3 base;
-    \\layout (location = 1) in vec3 offset;
-    \\layout (location = 2) in float index;
+    \\layout (location = 1) in vec3 chunk;
+    \\layout (location = 2) in float block;
     \\
     \\uniform mat4 projection;
     \\uniform mat4 view;
     \\uniform mat4 model;
+    \\uniform float chunk_dimension;
     \\
     \\void main() {
-    \\  if (index == -1.0) {
-    \\      // block isn't active,
-    \\      // discard by attaching value that will be clipped.
-    \\      gl_Position = vec4(-2.0, 0, 0, 1.0); 
-    \\  }
     \\  mat4 mvp = projection * view * model;
-    \\  gl_Position = mvp * vec4(base, 1.0);
+    \\  // If block == -1.0, it's essentially turned off.
+    \\  // Give vertex shader a point that will be clipped.
+    \\  gl_Position = block == -1.0 ? vec4(-2.0) :
+    \\                  mvp * vec4(base + chunk * chunk_dimension + 
+    \\                      vec3(
+    \\                          mod(block, chunk_dimension),
+    \\                          mod(floor(block / chunk_dimension), chunk_dimension),
+    \\                          floor(block / (chunk_dimension * chunk_dimension))
+    \\                      ), 1.0);
     \\}
 ;
 
@@ -58,11 +69,19 @@ size: usize = CHUNK_SIZE,
 vao: c_uint,
 vbo: c_uint,
 
-x: isize = 0,
-y: isize = 0,
-z: isize = 0,
+x: isize,
+y: isize,
+z: isize,
 
-pub fn init(ebo: c_uint, base_vbo: c_uint) Self {
+pub fn init(
+    ebo: c_uint, 
+    base_vbo: c_uint, 
+    options: struct {
+        x: isize = 0,
+        y: isize = 0,
+        z: isize = 0
+    }
+) Self {
     var vao: c_uint = undefined;
     var vbo: c_uint = undefined;
 
@@ -73,6 +92,10 @@ pub fn init(ebo: c_uint, base_vbo: c_uint) Self {
         .blocks = [_]Block{Block.init()} ** CHUNK_SIZE,
         .vao = vao,
         .vbo = vbo,
+
+        .x = options.x,
+        .y = options.y,
+        .z = options.z
     };
 
     c.glBindVertexArray(vao);
@@ -83,30 +106,54 @@ pub fn init(ebo: c_uint, base_vbo: c_uint) Self {
         3,
         c.GL_FLOAT,
         c.GL_FALSE,
-        3 * @sizeOf(c.GLfloat),
+        3 * @sizeOf(Float),
         null
     );
     c.glEnableVertexAttribArray(0);
 
+    // Initial buffer will contain
+    // chunk x, y, z which is instanced; and
+    // every index up to CHUNK_SIZE.
+    var initial_buffer = 
+        [_]Float{ @floatFromInt(self.x), @floatFromInt(self.y), @floatFromInt(self.z) } ++ [_]Float{0} ** CHUNK_SIZE;
+    for (0..CHUNK_SIZE) |index| initial_buffer[index + 3] = @floatFromInt(index);
+    std.debug.assert(initial_buffer.len == OFFSET_SIZE + CHUNK_SIZE);
+
     c.glBindBuffer(c.GL_ARRAY_BUFFER, vbo);
     c.glBufferData(
         c.GL_ARRAY_BUFFER,
-        @sizeOf(c.GLfloat) * CHUNK_SIZE * INSTANCE_SIZE,
-        null,
+        @sizeOf(Float) * (OFFSET_SIZE + CHUNK_SIZE),
+        @ptrCast(&initial_buffer[0]),
         c.GL_DYNAMIC_DRAW
     );
 
-    // Offset of entire chunk. 
+    // Offset of entire chunk, instanced.
+    // Changes once.
     c.glVertexAttribPointer(
         1,
-        3,
+        OFFSET_SIZE,
         c.GL_FLOAT,
         c.GL_FALSE,
-        3 * @sizeOf(c.GLfloat),
+        @sizeOf(Float) * (OFFSET_SIZE + INDEX_SIZE * CHUNK_SIZE),
         null
     );
     c.glEnableVertexAttribArray(1);
-    c.glVertexAttribDivisor(1, 1);
+    c.glVertexAttribDivisor(1, CHUNK_SIZE);
+
+    // Block index.
+    // We start from zero for the bottom left,
+    // and work our way up to CHUNK_SIZE - 1.
+    const index_offset: *const anyopaque = @ptrFromInt(OFFSET_SIZE * @sizeOf(Float));
+    c.glVertexAttribPointer(
+        2,
+        INDEX_SIZE,
+        c.GL_FLOAT,
+        c.GL_FALSE,
+        @sizeOf(Float) * INDEX_SIZE,
+        index_offset
+    );
+    c.glEnableVertexAttribArray(2);
+    c.glVertexAttribDivisor(2, 1);
 
     c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, ebo);
 
@@ -133,10 +180,17 @@ pub fn update(self: *Self) void {
 
 pub fn render(self: *Self) void {
     c.glBindVertexArray(self.vao);
-    c.glDrawElements(
+    // c.glDrawElements(
+    //     c.GL_TRIANGLES,
+    //     @intCast(Block.EDGES.len),
+    //     c.GL_UNSIGNED_INT,
+    //     null
+    // );
+    c.glDrawElementsInstanced(
         c.GL_TRIANGLES,
         @intCast(Block.EDGES.len),
         c.GL_UNSIGNED_INT,
-        null
+        null,
+        CHUNK_SIZE
     );
 }

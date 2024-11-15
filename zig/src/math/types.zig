@@ -1,2 +1,2 @@
-pub const EPSILON: FLOAT = 0.00001;
-pub const FLOAT = f32;
+pub const EPSILON: Float = 0.00001;
+pub const Float = f32;

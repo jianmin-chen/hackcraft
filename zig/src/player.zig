@@ -1,7 +1,6 @@
 const math = @import("math");
 
-const Coord = math.types.Coord;
-const FLOAT = math.types.FLOAT;
+const Float = math.types.Float;
 
 const Matrix = math.Matrix;
 const MatrixPrimitive = math.MatrixPrimitive;
@@ -11,13 +10,13 @@ const Vec3 = math.Vec3;
 
 const Self = @This();
 
-const VIEW_DISTANCE: FLOAT = 144; 
+const VIEW_DISTANCE: Float = 144; 
 
 position: Vec3Primitive = Vec3Primitive{ 0, 0, 0 },
-camera: Vec3Primitive = Vec3Primitive{ 0, 0, -3 },
+camera: Vec3Primitive = Vec3Primitive{ 0, 0, -10 },
 
-yaw: FLOAT = 0,
-pitch: FLOAT = 0,
+yaw: Float = 0,
+pitch: Float = 0,
 
 pub fn view(self: *Self) MatrixPrimitive {
     const target = Vec3Primitive{

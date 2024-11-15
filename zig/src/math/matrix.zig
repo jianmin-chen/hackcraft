@@ -2,82 +2,82 @@ const types = @import("types.zig");
 const math = @import("std").math;
 const vector = @import("vector.zig");
 
-const FLOAT = types.FLOAT;
+const Float = types.Float;
 
-pub const MatrixPrimitive = [4][4]FLOAT;
+pub const MatrixPrimitive = [4][4]Float;
 
 const Vec3Primitive = vector.Vec3Primitive;
 const Vec3 = vector.Vec3;
 
 pub const Matrix = struct {
     pub fn identity(options: struct {
-        fill: FLOAT = 1
+        fill: Float = 1
     }) MatrixPrimitive {
-        return [_][4]FLOAT{
-            [4]FLOAT{ options.fill, 0, 0, 0 },
-            [4]FLOAT{ 0, options.fill, 0, 0 },
-            [4]FLOAT{ 0, 0, options.fill, 0 },
-            [4]FLOAT{ 0, 0, 0, options.fill }
+        return [_][4]Float{
+            [4]Float{ options.fill, 0, 0, 0 },
+            [4]Float{ 0, options.fill, 0, 0 },
+            [4]Float{ 0, 0, options.fill, 0 },
+            [4]Float{ 0, 0, 0, options.fill }
         };
     }
 
-    pub fn translation(x: FLOAT, y: FLOAT, z: FLOAT) MatrixPrimitive {
-        return [_][4]FLOAT{
-            [4]FLOAT{ 1, 0, 0, 0 },
-            [4]FLOAT{ 0, 1, 0, 0 },
-            [4]FLOAT{ 0, 0, 1, 0 },
-            [4]FLOAT{ x, y, z, 1 }
+    pub fn translation(x: Float, y: Float, z: Float) MatrixPrimitive {
+        return [_][4]Float{
+            [4]Float{ 1, 0, 0, 0 },
+            [4]Float{ 0, 1, 0, 0 },
+            [4]Float{ 0, 0, 1, 0 },
+            [4]Float{ x, y, z, 1 }
         };
     }
 
-    pub fn xRotation(angle: FLOAT) MatrixPrimitive {
+    pub fn xRotation(angle: Float) MatrixPrimitive {
         const rad = math.degreesToRadians(angle);
         const c = math.cos(rad);
         const s = math.sin(rad);
-        return [_][4]FLOAT{
-            [4]FLOAT{ 1, 0, 0, 0 },
-            [4]FLOAT{ 0, c, s, 0 },
-            [4]FLOAT{ 0, -s, c, 0 },
-            [4]FLOAT{ 0, 0, 0, 1 }
+        return [_][4]Float{
+            [4]Float{ 1, 0, 0, 0 },
+            [4]Float{ 0, c, s, 0 },
+            [4]Float{ 0, -s, c, 0 },
+            [4]Float{ 0, 0, 0, 1 }
         };
     }
 
-    pub fn yRotation(angle: FLOAT) MatrixPrimitive {
+    pub fn yRotation(angle: Float) MatrixPrimitive {
         const rad = math.degreesToRadians(angle);
         const c = math.cos(rad);
         const s = math.sin(rad);
-        return [_][4]FLOAT{
-            [4]FLOAT{ c, 0, -s, 0 },
-            [4]FLOAT{ 0, 1, 0, 0 },
-            [4]FLOAT{ s, 0, c, 0 },
-            [4]FLOAT{ 0, 0, 0, 1 }
+        return [_][4]Float{
+            [4]Float{ c, 0, -s, 0 },
+            [4]Float{ 0, 1, 0, 0 },
+            [4]Float{ s, 0, c, 0 },
+            [4]Float{ 0, 0, 0, 1 }
         };
     }
 
-    pub fn zRotation(angle: FLOAT) MatrixPrimitive {
+    pub fn zRotation(angle: Float) MatrixPrimitive {
         const rad = math.degreesToRadians(angle);
         const c = math.cos(rad);
         const s = math.sin(rad);
-        return [_][4]FLOAT{
-            [4]FLOAT{ c, s, 0, 0 },
-            [4]FLOAT{ -s, c, 0, 0 },
-            [4]FLOAT{ 0, 0, 1, 0 },
-            [4]FLOAT{ 0, 0, 0, 1 }
+        return [_][4]Float{
+            [4]Float{ c, s, 0, 0 },
+            [4]Float{ -s, c, 0, 0 },
+            [4]Float{ 0, 0, 1, 0 },
+            [4]Float{ 0, 0, 0, 1 }
         };
     }
 
     pub fn perspective(
-        fov: FLOAT,
-        aspect: FLOAT,
-        near: FLOAT,
-        far: FLOAT
+        fov: Float,
+        aspect: Float,
+        near: Float,
+        far: Float
     ) MatrixPrimitive {
         const f = math.tan(math.degreesToRadians(fov) / 2);
-        return [_][4]FLOAT{
-            [4]FLOAT{ 1 / (aspect * f), 0, 0, 0 },
-            [4]FLOAT{ 0, 1 / f, 0, 0 },
-            [4]FLOAT{ 0, 0, -1 * (far + near) / (far - near), -1 },
-            [4]FLOAT{ 0, 0, -1 * (2.0 * far * near) / (far - near), 0 }
+        return [_][4]Float{
+            [4]Float{ 1 / (aspect * f), 0, 0, 0 },
+            [4]Float{ 0, 1 / f, 0, 0 },
+            [4]Float{ 0, 0, -1 * (far + near) / (far - near), -1 },
+            [4]Float{ 0, 0, -1 * (2.0 * far * near) / (far - near), 0 }
         };
     }
 
@@ -90,11 +90,11 @@ pub const Matrix = struct {
         const x_axis = Vec3.normalize(Vec3.cross(up, z_axis));
         const y_axis = Vec3.normalize(Vec3.cross(z_axis, x_axis));
 
-        return [_][4]FLOAT{
-            [4]FLOAT{ x_axis[0], x_axis[1], x_axis[2], 0 },
-            [4]FLOAT{ y_axis[0], y_axis[1], y_axis[2], 0 },
-            [4]FLOAT{ z_axis[0], z_axis[1], z_axis[2], 0 },
-            [4]FLOAT{ camera[0], camera[1], camera[2], 1 }
+        return [_][4]Float{
+            [4]Float{ x_axis[0], x_axis[1], x_axis[2], 0 },
+            [4]Float{ y_axis[0], y_axis[1], y_axis[2], 0 },
+            [4]Float{ z_axis[0], z_axis[1], z_axis[2], 0 },
+            [4]Float{ camera[0], camera[1], camera[2], 1 }
         };
     }
 
@@ -135,9 +135,9 @@ pub const Matrix = struct {
 
         const d = 1.0 / (a[0][0] * t0 + a[1][0] * t1 + a[2][0] * t2 + a[3][0] * t3);
 
-        return [_][4]FLOAT{
-            [4]FLOAT{ d * t0, d * t1, d * t2, d * t3 },
-            [4]FLOAT{
+        return [_][4]Float{
+            [4]Float{ d * t0, d * t1, d * t2, d * t3 },
+            [4]Float{
                 d * ((tmp_1 * a[1][0] + tmp_2 * a[2][0] + tmp_5 * a[3][0]) -
                         (tmp_0 * a[1][0] + tmp_3 * a[2][0] + tmp_4 * a[3][0])),
                 d * ((tmp_0 * a[0][0] + tmp_7 * a[2][0] + tmp_8 * a[3][0]) -
@@ -147,7 +147,7 @@ pub const Matrix = struct {
                 d * ((tmp_4 * a[0][0] + tmp_9 * a[1][0] + tmp_10 * a[2][0]) -
                         (tmp_5 * a[0][0] + tmp_8 * a[1][0] + tmp_11 * a[2][0]))
             },
-            [4]FLOAT{
+            [4]Float{
                 d * ((tmp_12 * a[1][3] + tmp_15 * a[2][3] + tmp_16 * a[3][3]) -
                         (tmp_13 * a[1][3] + tmp_14 * a[2][3] + tmp_17 * a[3][3])),
                 d * ((tmp_13 * a[0][3] + tmp_18 * a[2][3] + tmp_21 * a[3][3]) -
@@ -157,7 +157,7 @@ pub const Matrix = struct {
                 d * ((tmp_17 * a[0][3] + tmp_20 * a[1][3] + tmp_23 * a[2][3]) -
                         (tmp_16 * a[0][3] + tmp_21 * a[1][3] + tmp_22 * a[2][3]))
             },
-            [4]FLOAT{
+            [4]Float{
                 d * ((tmp_14 * a[2][2] + tmp_17 * a[3][2] + tmp_13 * a[1][2]) -
                         (tmp_16 * a[3][2] + tmp_12 * a[1][2] + tmp_15 * a[2][2])),
                 d * ((tmp_20 * a[3][2] + tmp_12 * a[0][2] + tmp_19 * a[2][2]) -
@@ -174,26 +174,26 @@ pub const Matrix = struct {
         a: MatrixPrimitive,
         b: MatrixPrimitive
     ) MatrixPrimitive {
-        return [_][4]FLOAT{
-            [4]FLOAT{
+        return [_][4]Float{
+            [4]Float{
                 b[0][0] * a[0][0] + b[0][1] * a[1][0] + b[0][2] * a[2][0] + b[0][3] * a[3][0],
                 b[0][0] * a[0][1] + b[0][1] * a[1][1] + b[0][2] * a[2][1] + b[0][3] * a[3][1],
                 b[0][0] * a[0][2] + b[0][1] * a[1][2] + b[0][2] * a[2][2] + b[0][3] * a[3][2],
                 b[0][0] * a[0][3] + b[0][1] * a[1][3] + b[0][2] * a[2][3] + b[0][3] * a[3][3]
             },
-            [4]FLOAT{
+            [4]Float{
                 b[1][0] * a[0][0] + b[1][1] * a[1][0] + b[1][2] * a[2][0] + b[1][3] * a[3][0],
                 b[1][0] * a[0][1] + b[1][1] * a[1][1] + b[1][2] * a[2][1] + b[1][3] * a[3][1],
                 b[1][0] * a[0][2] + b[1][1] * a[1][2] + b[1][2] * a[2][2] + b[1][3] * a[3][2],
                 b[1][0] * a[0][3] + b[1][1] * a[1][3] + b[1][2] * a[2][3] + b[1][3] * a[3][3]
             },
-            [4]FLOAT{
+            [4]Float{
                 b[2][0] * a[0][0] + b[2][1] * a[1][0] + b[2][2] * a[2][0] + b[2][3] * a[3][0],
                 b[2][0] * a[0][1] + b[2][1] * a[1][1] + b[2][2] * a[2][1] + b[2][3] * a[3][1],
                 b[2][0] * a[0][2] + b[2][1] * a[1][2] + b[2][2] * a[2][2] + b[2][3] * a[3][2],
                 b[2][0] * a[0][3] + b[2][1] * a[1][3] + b[2][2] * a[2][3] + b[2][3] * a[3][3]
             },
-            [4]FLOAT{
+            [4]Float{
                 b[3][0] * a[0][0] + b[3][1] * a[1][0] + b[3][2] * a[2][0] + b[3][3] * a[3][0],
                 b[3][0] * a[0][1] + b[3][1] * a[1][1] + b[3][2] * a[2][1] + b[3][3] * a[3][1],
                 b[3][0] * a[0][2] + b[3][1] * a[1][2] + b[3][2] * a[2][2] + b[3][3] * a[3][2],

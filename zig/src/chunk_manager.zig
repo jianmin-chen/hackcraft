@@ -3,11 +3,10 @@
 
 const c = @cImport({
     @cInclude("glad/glad.h");
-    @cInclude("GLFW/glfw3.h");
 });
 const std = @import("std");
-const Matrix = @import("math").Matrix;
 const block = @import("block.zig");
+const math = @import("math");
 const Chunk = @import("chunk.zig");
 const Shader = @import("shader.zig");
 
@@ -15,8 +14,12 @@ const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 const assert = std.debug.assert;
 
+const Float = math.types.Float;
+
 const BASE = block.VERTICES;
 const INDICES = block.EDGES;
+
+const CHUNK_LENGTH = Chunk.CHUNK_LENGTH;
 
 const vertex = Chunk.vertex;
 const fragment = Chunk.fragment;
@@ -42,7 +45,7 @@ pub fn init(allocator: Allocator) Self {
     c.glBindBuffer(c.GL_ARRAY_BUFFER, base_vbo);
     c.glBufferData(
         c.GL_ARRAY_BUFFER,
-        @sizeOf(c.GLfloat) * BASE.len,
+        @sizeOf(Float) * BASE.len,
         @ptrCast(&BASE[0]),
         c.GL_STATIC_DRAW
     );
@@ -56,7 +59,12 @@ pub fn init(allocator: Allocator) Self {
         c.GL_STATIC_DRAW
     );
 
-    const chunk_shader = try Shader.compile(vertex, fragment);
+    var chunk_shader = try Shader.compile(vertex, fragment);
+
+    c.glUniform1f(
+        chunk_shader.uniform("chunk_dimension"),
+        CHUNK_LENGTH
+    );
 
     return .{
         .allocator = allocator,
@@ -90,7 +98,7 @@ pub fn deinit(self: *Self) void {
 
 pub fn addChunk(self: *Self) !void {
     const chunk = try self.allocator.create(Chunk);
-    chunk.* = Chunk.init(self.ebo, self.base_vbo);
+    chunk.* = Chunk.init(self.ebo, self.base_vbo, .{});
     try self.chunks.append(chunk);
     try self.paint_chunks.append(chunk);
 }

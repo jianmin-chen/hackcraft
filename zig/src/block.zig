@@ -1,11 +1,13 @@
 const c = @cImport({
     @cInclude("glad/glad.h");
-    @cInclude("GLFW/glfw3.h");
 });
 const std = @import("std");
+const math = @import("math");
+
+const Float = math.types.Float;
 
 // All the possible vertices of a 1x1 base cube at (0, 0, 0).
-pub const VERTICES = [_]c.GLfloat{
+pub const VERTICES = [_]Float{
     0, 0, 0,
     1, 0, 0,
     0, 1, 0,

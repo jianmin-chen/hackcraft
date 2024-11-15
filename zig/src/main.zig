@@ -11,7 +11,7 @@ const Allocator = std.mem.Allocator;
 
 const Matrix = math.Matrix;
 const MatrixPrimitive = math.MatrixPrimitive;
-const FLOAT = math.types.FLOAT;
+const Float = math.types.Float;
 
 const Options = struct {
     debug: bool = true,
@@ -19,12 +19,12 @@ const Options = struct {
     initial_width: c_int = 1000,
     initial_height: c_int = 700,
 
-    width: c_int = 1000,
-    height: c_int = 700,
+    width: c_int = 1024,
+    height: c_int = 768,
 
-    fov: FLOAT = 45,
-    near: FLOAT = 0.1,
-    far: FLOAT = 100,
+    fov: Float = 45,
+    near: Float = 0.1,
+    far: Float = 100,
     perspective: MatrixPrimitive = undefined,
 
     const Self = @This();
@@ -32,7 +32,7 @@ const Options = struct {
     pub fn adjustPerspective(self: *Self) void {
         self.perspective = Matrix.perspective(
             self.fov,
-            @as(FLOAT, @floatFromInt(self.width)) / @as(FLOAT, @floatFromInt(self.height)),
+            @as(Float, @floatFromInt(self.width)) / @as(Float, @floatFromInt(self.height)),
             self.near,
             self.far
         );
@@ -85,6 +85,7 @@ pub fn main() !void {
     defer chunks.deinit();
 
     try chunks.addChunk();
+    // try chunks.addChunk();
 
     options.adjustPerspective();
     c.glUniformMatrix4fv(
@@ -103,7 +104,7 @@ pub fn main() !void {
         @ptrCast(&view[0])
     );
 
-    var x: FLOAT = 0;
+    var x: Float = 0;
 
     var prev = c.glfwGetTime();
     var accum: f64 = 0;
