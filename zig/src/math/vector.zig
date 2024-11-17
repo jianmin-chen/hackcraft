@@ -4,7 +4,14 @@ const math = @import("std").math;
 const EPSILON = types.EPSILON;
 const Float = types.Float;
 
+pub const Vec2Primitive = [2]Float;
 pub const Vec3Primitive = [3]Float;
+
+pub const Vec2 = struct {
+    pub fn dot(a: Vec2Primitive, b: Vec2Primitive) Float {
+        return a[0] * b[0] + a[1] * b[1];
+    }
+};
 
 pub const Vec3 = struct {
     pub fn length(a: Vec3Primitive) Float {
@@ -31,6 +38,14 @@ pub const Vec3 = struct {
             a[0] + n,
             a[1] + n,
             a[2] + n
+        };
+    }
+
+    pub fn scalarProduct(a: Vec3Primitive, n: Float) Vec3Primitive {
+        return Vec3Primitive{
+            a[0] * n,
+            a[1] * n,
+            a[2] * n
         };
     }
 

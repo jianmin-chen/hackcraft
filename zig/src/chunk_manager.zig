@@ -15,6 +15,7 @@ const ArrayList = std.ArrayList;
 const assert = std.debug.assert;
 
 const Float = math.types.Float;
+const PermutationTable = math.noise.PermutationTable;
 
 const BASE = block.VERTICES;
 const INDICES = block.EDGES;
@@ -28,16 +29,28 @@ const Self = @This();
 
 allocator: Allocator,
 
+permutations: PermutationTable,
+
+// Chunks is the entire chunk cache,
+// while the other ones filter out 
+// for a specific purpose.
 chunks: ArrayList(*Chunk),
 paint_chunks: ArrayList(*Chunk),
 update_chunks: ArrayList(*Chunk),
+
+render_chunks: ArrayList(*Chunk),
+render_radius: Float,
 
 base_vbo: c_uint,
 ebo: c_uint,
 
 chunk_shader: Shader,
 
-pub fn init(allocator: Allocator) Self {
+pub fn init(
+    allocator: Allocator, 
+    permutations: PermutationTable, 
+    render_radius: Float
+) Self {
     var base_vbo: c_uint = undefined;
     var ebo: c_uint = undefined;
 
@@ -69,9 +82,14 @@ pub fn init(allocator: Allocator) Self {
     return .{
         .allocator = allocator,
 
+        .permutations = permutations,
+
         .chunks = ArrayList(*Chunk).init(allocator),
         .paint_chunks = ArrayList(*Chunk).init(allocator),
         .update_chunks = ArrayList(*Chunk).init(allocator), 
+
+        .render_chunks = ArrayList(*Chunk).init(allocator),
+        .render_radius = render_radius,
 
         .base_vbo = base_vbo,
         .ebo = ebo,
@@ -89,6 +107,7 @@ pub fn deinit(self: *Self) void {
 
     self.paint_chunks.deinit();
     self.update_chunks.deinit();
+    self.render_chunks.deinit();
 
     c.glDeleteBuffers(1, &self.ebo);
     c.glDeleteBuffers(1, &self.base_vbo);
@@ -99,8 +118,11 @@ pub fn deinit(self: *Self) void {
 pub fn addChunk(self: *Self) !void {
     const chunk = try self.allocator.create(Chunk);
     chunk.* = Chunk.init(self.ebo, self.base_vbo, .{});
+    chunk.noise(self.permutations);
+    chunk.paint();
     try self.chunks.append(chunk);
     try self.paint_chunks.append(chunk);
+    try self.render_chunks.append(chunk);
 }
 
 pub fn update(self: *Self) void {
@@ -112,7 +134,5 @@ pub fn update(self: *Self) void {
 
 pub fn render(self: *Self) void {
     self.chunk_shader.use();
-    for (self.chunks.items) |chunk| {
-        chunk.render();
-    }
+    for (self.render_chunks.items) |chunk| chunk.render(.{});
 }

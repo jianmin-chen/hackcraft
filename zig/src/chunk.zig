@@ -10,7 +10,7 @@ const ArrayList = std.ArrayList;
 
 const Float = math.types.Float;
 
-pub const CHUNK_LENGTH = 4;
+pub const CHUNK_LENGTH = 36;
 pub const CHUNK_SIZE = CHUNK_LENGTH * CHUNK_LENGTH * CHUNK_LENGTH;
 
 // Convenience constants for those reading the source code.
@@ -32,12 +32,12 @@ pub const vertex =
     \\layout (location = 1) in vec3 chunk;
     \\layout (location = 2) in float block;
     \\
-    \\uniform mat4 projection;
+    \\uniform mat4 perspective;
     \\uniform mat4 view;
     \\uniform float chunk_dimension;
     \\
     \\void main() {
-    \\  mat4 transform = projection * view;
+    \\  mat4 transform = perspective * view;
     \\  // If block == -1.0, it's essentially turned off.
     \\  // Give vertex shader a point that will be clipped.
     \\  gl_Position = block == -1.0 ? vec4(-2.0) :
@@ -61,6 +61,8 @@ pub const fragment =
 ;
 
 const Self = @This();
+
+noise_applied: bool = false,
 
 blocks: [CHUNK_SIZE]Block,
 size: usize = CHUNK_SIZE,
@@ -113,8 +115,7 @@ pub fn init(
     // Initial buffer will contain
     // chunk x, y, z which is instanced; and
     // every index up to CHUNK_SIZE.
-    var initial_buffer = 
-        [_]Float{ @floatFromInt(self.x), @floatFromInt(self.y), @floatFromInt(self.z) } ++ [_]Float{0} ** CHUNK_SIZE;
+    var initial_buffer = [_]Float{@floatFromInt(self.x), @floatFromInt(self.y), @floatFromInt(self.z)} ++ [_]Float{0} ** CHUNK_SIZE;
     for (0..CHUNK_SIZE) |index| initial_buffer[index + 3] = @floatFromInt(index);
     std.debug.assert(initial_buffer.len == OFFSET_SIZE + CHUNK_SIZE);
 
@@ -163,24 +164,72 @@ pub fn deinit(self: *Self) void {
     c.glDeleteVertexArrays(1, &self.vao);
 }
 
-pub fn paint(self: *Self) void {
-    // Rebuild entire set of vertices.
-    // More performance-consuming than update().
-    _ = self;
+pub fn noise(self: *Self, permutations: math.noise.PermutationTable) void {
+    self.noise_applied = true;
+    const range_x: usize = @intCast(self.x);
+    const range_z: usize = @intCast(self.z);
+    for (range_x * CHUNK_LENGTH..range_x * CHUNK_LENGTH + CHUNK_LENGTH) |x| {
+        for (range_z * CHUNK_LENGTH..range_z * CHUNK_LENGTH + CHUNK_LENGTH) |z| {
+            // Noise is between [0, 1].
+            const n = (math.noise.fbm2D(@floatFromInt(x), @floatFromInt(z), permutations, .{}) + 1) * 0.5;
+            const elevation: usize = @intFromFloat(std.math.floor(n * CHUNK_LENGTH));
+            std.debug.print("{d}\n", .{elevation});
+            for (0..elevation) |y| {
+                // Now trim off blocks until trimmed off blocks = elevation.
+                self.blocks[z * CHUNK_LENGTH + (CHUNK_LENGTH - y) * CHUNK_LENGTH + x].active = false;
+            }
+        }
+    }
 }
 
+// Rebuild entire set of vertices.
+// More performance-consuming than update().
+pub fn paint(self: *Self) void {
+    _ = self;
+    // var buffer = [_]Float{@floatFromInt(self.x), @floatFromInt(self.y), @floatFromInt(self.z)} ++ [_]Float{0} ** CHUNK_SIZE;
+    // for (0..CHUNK_SIZE) |index| {
+    //     if (self.blocks[index].active) {
+    //         buffer[index] = @floatFromInt(index);
+    //     } else buffer[index] = -1;
+    // }
+    // const range_x: usize = @intCast(self.x);
+    // const range_y: usize = @intCast(self.y);
+    // const range_z: usize = @intCast(self.z);
+    // var i: usize = 0;
+    // for (range_x * CHUNK_LENGTH..range_x * CHUNK_LENGTH + CHUNK_LENGTH) |x| {
+    //     for (range_y * CHUNK_LENGTH..range_y * CHUNK_LENGTH + CHUNK_LENGTH) |y| {
+    //         for (range_z * CHUNK_LENGTH..range_z * CHUNK_LENGTH + CHUNK_LENGTH) |z| {
+    //             if (self.blocks[z * CHUNK_LENGTH + (CHUNK_LENGTH - y) * CHUNK_LENGTH + x].active) {
+    //                 buffer[i] = @floatFromInt(i);
+    //             } else buffer[i] = -1;
+    //             i += 1;
+    //         }
+    //     }
+    // }
+        
+    // c.glBindBuffer(c.GL_ARRAY_BUFFER, self.vbo);
+    // c.glBufferData(
+    //     c.GL_ARRAY_BUFFER,
+    //     @sizeOf(Float) * (OFFSET_SIZE + CHUNK_SIZE),
+    //     @ptrCast(&buffer[0]),
+    //     c.GL_DYNAMIC_DRAW
+    // );
+}
+
+// Rebuild only changed blocks.
+// Since we're changing a sub buffer
+// and not repainting the entire chunk,
+// this is a cheaper operation than paint().
 pub fn update(self: *Self) void {
-    // Rebuild only changed blocks.
-    // Since we're changing a sub buffer
-    // and not repainting the entire chunk,
-    // this is a cheaper operation than paint().
     _ = self;
 } 
 
-pub fn render(self: *Self) void {
+pub fn render(self: *Self, flags: struct {
+    mode: c.GLenum = c.GL_TRIANGLES
+}) void {
     c.glBindVertexArray(self.vao);
     c.glDrawElementsInstanced(
-        c.GL_TRIANGLES,
+        flags.mode,
         @intCast(Block.EDGES.len),
         c.GL_UNSIGNED_INT,
         null,
