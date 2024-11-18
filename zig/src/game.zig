@@ -7,7 +7,6 @@ const math = @import("math");
 const CHUNK_LENGTH = @import("chunk.zig").CHUNK_LENGTH;
 const ChunkManager = @import("chunk_manager.zig");
 const Player = @import("player.zig");
-const Input = @import("input.zig");
 
 const Allocator = std.mem.Allocator;
 const AutoHashMap = std.AutoHashMap;
@@ -15,6 +14,7 @@ const AutoHashMap = std.AutoHashMap;
 const Float = math.types.Float;
 const Matrix = math.matrix.Matrix;
 const MatrixPrimitive = math.matrix.MatrixPrimitive;
+const Vec3 = math.vector.Vec3; 
 const Vec3Primitive = math.vector.Vec3Primitive;
 const noise = math.noise;
 
@@ -25,7 +25,7 @@ pub const Options = struct {
     debug: bool = true,
 
     // Values for randomness.
-    seed: u64 = 2,
+    seed: u64 = 12493874,
     permutation: noise.PermutationTable = undefined,
 
     initial_width: c_int = 1024,
@@ -38,12 +38,12 @@ pub const Options = struct {
     mouse_sensitivity: Float = 0.1,
 
     spawn_player: Player = .{
-        .position = Vec3Primitive{0, 15, 0},
-        .head = Vec3Primitive{0, 16, 0},
-        .camera = Vec3Primitive{0, 16, 0},
-        .target = Vec3Primitive{0, 0, 144},
-
-        .speed = 5,
+        .position = Vec3Primitive{0, 0, 0},
+        .head = Vec3Primitive{0, 2, 0},
+        .camera = Vec3Primitive{0, 0, 0},
+        .direction = Vec3Primitive{0, 0, 1},
+        
+        .speed = 2.5
     },
 
     pub fn default() Options {
@@ -62,9 +62,16 @@ window: ?*c.GLFWwindow,
 width: c_int,
 height: c_int,
 
+dt: f64 = 0,
+
 player: Player,
 chunks: ChunkManager,
-input: Input,
+mouse: struct {
+    last_x: Float = 0,
+    last_y: Float = 0,
+    x: ?Float = null,
+    y: ?Float = null
+},
 
 pub fn init(allocator: Allocator, options: Options) Self {
     if (c.glfwInit() == c.GL_FALSE) @panic("Unable to initialize GLFW");
@@ -106,22 +113,13 @@ pub fn init(allocator: Allocator, options: Options) Self {
 
         .player = options.spawn_player,
         .chunks = ChunkManager.init(allocator, options.permutation, options.far / CHUNK_LENGTH),
-        .input = .{
-            .keys = AutoHashMap(c_int, bool).init(allocator),
-            .mouse = .{
-                // Start out in the center of the screen.
-                .last_x = @as(Float, @floatFromInt(options.initial_width)) / 2,
-                .last_y = @as(Float, @floatFromInt(options.initial_height)) / 2,
-                .sensitivity = options.mouse_sensitivity
-            }
-        }
+        .mouse = .{}
     };
 }
 
 pub fn deinit(self: *Self) void {
     c.glfwTerminate();
     self.chunks.deinit();
-    self.input.deinit();
 }
 
 pub fn loop(self: *Self) !void {
@@ -130,7 +128,7 @@ pub fn loop(self: *Self) !void {
     self.adjustPerspective();
     const view_location = self.chunks.chunk_shader.uniform("view");
 
-    var prev = c.glfwGetTime();
+    var prev: f64 = 0;
     var elapsed: f64 = 0;
     var frames: usize = 0;
     while (c.glfwWindowShouldClose(self.window) == c.GL_FALSE) {
@@ -138,20 +136,22 @@ pub fn loop(self: *Self) !void {
         c.glClear(c.GL_COLOR_BUFFER_BIT);
 
         const timestamp = c.glfwGetTime();
-        const dt = timestamp - prev;
+        self.dt = timestamp - prev;
         prev = timestamp;
 
         if (self.options.debug) {
             frames += 1;
-            elapsed += dt;
+            elapsed += self.dt;
             if (elapsed >= 1.0) {
-                if (self.options.internal_debug) std.debug.print("{d} fps\n", .{frames});
+                // if (self.options.internal_debug) std.debug.print("{d} fps\n", .{frames});
                 frames = 0;
                 elapsed = 0;
             }
         }
+        
+        self.keyInput();
 
-        self.player.update(@floatCast(dt));
+        self.player.update(@floatCast(self.dt));
         const camera = self.player.view();
         const view = Matrix.inverse(camera);
         c.glUniformMatrix4fv(view_location, 1, c.GL_FALSE, @ptrCast(&view[0]));
@@ -182,24 +182,46 @@ fn adjustPerspective(self: *Self) void {
     c.glUniformMatrix4fv(self.chunks.chunk_shader.uniform("perspective"), 1, c.GL_FALSE, @ptrCast(&perspective[0]));
 }
 
-pub fn keyInput(self: *Self, key: c_int, action: c_int) void {
-    if (action == c.GLFW_REPEAT) return;
-    self.input.keys.put(key, if (action == c.GLFW_RELEASE) false else true) catch {
-        @panic("Unable to read key");
-    };
-    self.player.move(self.input.keys);
+pub fn keyInput(self: *Self) void {
+    const dt: Float = @floatCast(self.dt);
+    const speed = self.player.speed * dt;
+
+    // TODO: Right now this affects the direction the player moves towards.
+    // In Minecraft, the player typically moves consistently along one axis,
+    // the z-axis (similar to how A/S move along the x-axis.)
+    //
+    // Will be implemented once gravity is implemented.
+    if (c.glfwGetKey(self.window, c.GLFW_KEY_W) == c.GLFW_PRESS) {
+        self.player.move(Vec3.scalarProduct(self.player.direction, speed));
+    } else if (c.glfwGetKey(self.window, c.GLFW_KEY_S) == c.GLFW_PRESS) {
+        self.player.move(Vec3.scalarProduct(self.player.direction, -1 * speed));
+    } 
+
+    const x_axis = Vec3.normalize(Vec3.cross(self.player.direction, Vec3.UP));
+    if (c.glfwGetKey(self.window, c.GLFW_KEY_A) == c.GLFW_PRESS) {
+        self.player.move(Vec3.scalarProduct(x_axis, -1 * speed));
+    } else if (c.glfwGetKey(self.window, c.GLFW_KEY_D) == c.GLFW_PRESS) {
+        self.player.move(Vec3.scalarProduct(x_axis, speed));
+    }
+
+    if (c.glfwGetKey(self.window, c.GLFW_KEY_SPACE) == c.GLFW_PRESS) {
+        self.player.move(Vec3.scalarProduct(Vec3.UP, 1 * speed));
+    }
 }
 
 pub fn mouseInput(self: *Self, x: Float, y: Float) void {
-    if (self.input.mouse.x == null or self.input.mouse.y == null) {
-        self.input.mouse.last_x = x;
-        self.input.mouse.last_y = y;
+    if (self.mouse.x == null or self.mouse.y == null) {
+        self.mouse.last_x = x;
+        self.mouse.last_y = y;
     } else {
-        self.input.mouse.last_x = self.input.mouse.x;
-        self.input.mouse.last_y = self.input.mouse.y;
+        self.mouse.last_x = self.mouse.x.?;
+        self.mouse.last_y = self.mouse.y.?;
     }
-    self.input.mouse.x = x;
-    self.input.mouse.y = y;
+    self.mouse.x = x;
+    self.mouse.y = y;
 
-    // self.player.rotate(self.input.mouse);
+    const dx = (self.mouse.x.? - self.mouse.last_x) * self.options.mouse_sensitivity;
+    const dy = (self.mouse.last_y - self.mouse.y.?) * self.options.mouse_sensitivity;
+
+    self.player.rotate(dx, dy);
 }

@@ -14,6 +14,10 @@ pub const Vec2 = struct {
 };
 
 pub const Vec3 = struct {
+    // Unit vector representing positive y-axis.
+    // Comes in handy for cross multiplying Vec3Primitives.
+    pub const UP = Vec3Primitive{0, 1, 0};
+
     pub fn length(a: Vec3Primitive) Float {
         return math.sqrt(
             a[0] * a[0] + 
@@ -66,6 +70,8 @@ pub const Vec3 = struct {
     }
 
     pub fn cross(a: Vec3Primitive, b: Vec3Primitive) Vec3Primitive {
+        // The cross product of two vectors is a vector
+        // that is perpendicular to both of them.
         return Vec3Primitive{
             a[1] * b[2] - a[2] * b[1],
             a[2] * b[0] - a[0] * b[2],

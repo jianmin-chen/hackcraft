@@ -10,7 +10,7 @@ const ArrayList = std.ArrayList;
 
 const Float = math.types.Float;
 
-pub const CHUNK_LENGTH = 36;
+pub const CHUNK_LENGTH = 16;
 pub const CHUNK_SIZE = CHUNK_LENGTH * CHUNK_LENGTH * CHUNK_LENGTH;
 
 // Convenience constants for those reading the source code.
@@ -173,7 +173,7 @@ pub fn noise(self: *Self, permutations: math.noise.PermutationTable) void {
             // Noise is between [0, 1].
             const n = (math.noise.fbm2D(@floatFromInt(x), @floatFromInt(z), permutations, .{}) + 1) * 0.5;
             const elevation: usize = @intFromFloat(std.math.floor(n * CHUNK_LENGTH));
-            std.debug.print("{d}\n", .{elevation});
+            // std.debug.print("{d}\n", .{elevation});
             for (0..elevation) |y| {
                 // Now trim off blocks until trimmed off blocks = elevation.
                 self.blocks[z * CHUNK_LENGTH + (CHUNK_LENGTH - y) * CHUNK_LENGTH + x].active = false;
@@ -185,8 +185,23 @@ pub fn noise(self: *Self, permutations: math.noise.PermutationTable) void {
 // Rebuild entire set of vertices.
 // More performance-consuming than update().
 pub fn paint(self: *Self) void {
-    _ = self;
-    // var buffer = [_]Float{@floatFromInt(self.x), @floatFromInt(self.y), @floatFromInt(self.z)} ++ [_]Float{0} ** CHUNK_SIZE;
+    var buffer = [_]Float{@floatFromInt(self.x), @floatFromInt(self.y), @floatFromInt(self.z)} ++ [_]Float{0} ** CHUNK_SIZE;
+    const range_x = @as(usize, @intCast(self.x)) * CHUNK_LENGTH;
+    const range_y = @as(usize, @intCast(self.y)) * CHUNK_LENGTH;
+    const range_z = @as(usize, @intCast(self.z)) * CHUNK_LENGTH;
+    var i: usize = 3;
+
+    for (range_z..range_z + CHUNK_LENGTH) |z| {
+        for (range_y..range_y + CHUNK_LENGTH) |y| {
+            for (range_x..range_x + CHUNK_LENGTH) |x| {
+                if (self.blocks[z * CHUNK_LENGTH + y * CHUNK_LENGTH + x].active) {
+                    buffer[i] = @floatFromInt(i);
+                } else buffer[i] = -1;
+                i += 1;
+            }
+        }
+    }
+
     // for (0..CHUNK_SIZE) |index| {
     //     if (self.blocks[index].active) {
     //         buffer[index] = @floatFromInt(index);
@@ -207,13 +222,13 @@ pub fn paint(self: *Self) void {
     //     }
     // }
         
-    // c.glBindBuffer(c.GL_ARRAY_BUFFER, self.vbo);
-    // c.glBufferData(
-    //     c.GL_ARRAY_BUFFER,
-    //     @sizeOf(Float) * (OFFSET_SIZE + CHUNK_SIZE),
-    //     @ptrCast(&buffer[0]),
-    //     c.GL_DYNAMIC_DRAW
-    // );
+    c.glBindBuffer(c.GL_ARRAY_BUFFER, self.vbo);
+    c.glBufferData(
+        c.GL_ARRAY_BUFFER,
+        @sizeOf(Float) * (OFFSET_SIZE + CHUNK_SIZE),
+        @ptrCast(&buffer[0]),
+        c.GL_DYNAMIC_DRAW
+    );
 }
 
 // Rebuild only changed blocks.

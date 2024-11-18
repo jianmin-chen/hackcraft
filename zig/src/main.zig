@@ -16,19 +16,12 @@ pub fn main() !void {
     game = Game.init(allocator, Options.default());
     defer game.deinit();
 
-    // No input callbacks are handled by Game,
-    // so we need to pass them in instead.
-    // c.glfwSetInputMode(@ptrCast(game.window), c.GLFW_CURSOR, c.GLFW_CURSOR_DISABLED);
-    _ = c.glfwSetKeyCallback(@ptrCast(game.window), updateKeys);
+    c.glfwSetInputMode(@ptrCast(game.window), c.GLFW_CURSOR, c.GLFW_CURSOR_DISABLED);
     _ = c.glfwSetCursorPosCallback(@ptrCast(game.window), updateMouse);
 
     try game.loop();
 }
 
-fn updateKeys(_: ?*c.GLFWwindow, key: c_int, _: c_int, action: c_int, _: c_int) callconv(.C) void {
-    game.keyInput(key, action);
-}
-
 fn updateMouse(_: ?*c.GLFWwindow, x: f64, y: f64) callconv(.C) void {
-    game.mouseInput(@floatCast(x), @floatCast(y)); 
+    game.mouseInput(@floatCast(x), @floatCast(y));
 }

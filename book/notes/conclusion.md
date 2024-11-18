@@ -14,4 +14,6 @@ Please check out all these good resources. Poring over them helped me write this
 >
 > Shadertoy is essentially a programming language that compiles down to your operating system's preferred shader language, e.g. OpenGL ES or Metal appear to be the most common ones. I really want to write a little compiler for Shadertoy to explore PL (programming language) design. That would be really cool.
 
-The best thing to do is to Google. There's so much on graphics programming that there's a whole conference dedicated to it. 
+The best thing to do is to Google. There's so much on graphics programming that there's a whole conference dedicated to it. And despite what people say, Wikipedia is a good resource and not that hard to understand.
+
+Many of the chapters included a extra resources section at the bottom, so feel free to go back and read those!

@@ -35,3 +35,7 @@ Install the `assets` [here]. We have two files:
 ## Goals
 
 The goal
+
+> Hey!
+>
+> Disclaimer: some of the code in ths book isn't optimized for the purposes of learning. You'll notice that throughout the book. However, it is code that works, and I encourage you to make as many changes as your heart desires!
