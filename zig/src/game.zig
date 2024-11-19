@@ -14,8 +14,8 @@ const AutoHashMap = std.AutoHashMap;
 const Float = math.types.Float;
 const Matrix = math.matrix.Matrix;
 const MatrixPrimitive = math.matrix.MatrixPrimitive;
-const Vec3 = math.vector.Vec3; 
-const Vec3Primitive = math.vector.Vec3Primitive;
+const Vec3 = math.vector.Vec3(Float); 
+const Vec3Primitive = Vec3.Primitive;
 const noise = math.noise;
 
 const Self = @This();
@@ -73,7 +73,7 @@ mouse: struct {
     y: ?Float = null
 },
 
-pub fn init(allocator: Allocator, options: Options) Self {
+pub fn init(allocator: Allocator, options: Options) !Self {
     if (c.glfwInit() == c.GL_FALSE) @panic("Unable to initialize GLFW");
     c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MAJOR, 3);
     c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -112,7 +112,12 @@ pub fn init(allocator: Allocator, options: Options) Self {
         .height = options.initial_height,
 
         .player = options.spawn_player,
-        .chunks = ChunkManager.init(allocator, options.permutation, options.far / CHUNK_LENGTH),
+        .chunks = try ChunkManager.init(
+            allocator,
+            options.permutation,
+            options.spawn_player.position,
+            @intFromFloat(options.far / CHUNK_LENGTH)   
+        ),
         .mouse = .{}
     };
 }
@@ -123,8 +128,6 @@ pub fn deinit(self: *Self) void {
 }
 
 pub fn loop(self: *Self) !void {
-    try self.chunks.addChunk();
-
     self.adjustPerspective();
     const view_location = self.chunks.chunk_shader.uniform("view");
 
@@ -156,7 +159,7 @@ pub fn loop(self: *Self) !void {
         const view = Matrix.inverse(camera);
         c.glUniformMatrix4fv(view_location, 1, c.GL_FALSE, @ptrCast(&view[0]));
 
-        self.chunks.update();
+        self.chunks.update(@floatCast(self.dt));
 
         self.chunks.render();
 

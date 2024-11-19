@@ -8,8 +8,8 @@ const Float = math.types.Float;
 const Matrix = math.matrix.Matrix;
 const MatrixPrimitive = math.matrix.MatrixPrimitive;
 
-const Vec3 = math.vector.Vec3;
-const Vec3Primitive = math.vector.Vec3Primitive;
+const Vec3 = math.vector.Vec3(Float);
+const Vec3Primitive = Vec3.Primitive;
 
 const Self = @This();
 

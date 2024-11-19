@@ -10,7 +10,7 @@ const ArrayList = std.ArrayList;
 
 const Float = math.types.Float;
 
-pub const CHUNK_LENGTH = 16;
+pub const CHUNK_LENGTH = 3;
 pub const CHUNK_SIZE = CHUNK_LENGTH * CHUNK_LENGTH * CHUNK_LENGTH;
 
 // Convenience constants for those reading the source code.

@@ -13,7 +13,7 @@ pub fn main() !void {
     defer std.debug.assert(gpa.deinit() == .ok);
 
     const allocator = gpa.allocator();
-    game = Game.init(allocator, Options.default());
+    game = try Game.init(allocator, Options.default());
     defer game.deinit();
 
     c.glfwSetInputMode(@ptrCast(game.window), c.GLFW_CURSOR, c.GLFW_CURSOR_DISABLED);

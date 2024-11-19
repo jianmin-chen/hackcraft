@@ -6,8 +6,8 @@ const Float = types.Float;
 
 pub const MatrixPrimitive = [4][4]Float;
 
-const Vec3Primitive = vector.Vec3Primitive;
-const Vec3 = vector.Vec3;
+const Vec3 = vector.Vec3(Float);
+const Vec3Primitive = Vec3.Primitive;
 
 pub const Matrix = struct {
     pub fn identity(options: struct {
