@@ -128,6 +128,8 @@ pub fn deinit(self: *Self) void {
 }
 
 pub fn loop(self: *Self) !void {
+    const chunk = try self.chunks.addChunk(math.vector.Vec3(isize).Primitive{0, 0, 0});
+    try self.chunks.render_chunks.put(math.vector.Vec3(isize).Primitive{0, 0, 0}, chunk);
     self.adjustPerspective();
     const view_location = self.chunks.chunk_shader.uniform("view");
 

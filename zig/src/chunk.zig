@@ -1,3 +1,19 @@
+// There are a couple of optimizations we can do.
+// Whether or not a cube is active can affect whether or not it shows up,
+// but a cube may not be rendered even if it is active.
+//
+// In order:
+// * If a cube isn't active, skip.
+// * If a cube is on the outer edge of a chunk and is active, it gets rendred.
+//   We don't do face merging between chunks but if chunks are optimized, this shouldn't be an issues.
+// * Don't render cubes that have neighbors that are all active,
+//   regardless of whether or not they're being rendered.
+// * Determine indices of vertices to render by checking the neighbors of faces;
+//   this is basically merging the faces.
+//
+// There are other optimizations you could do, including
+// greedy meshing and level of detail.
+
 const c = @cImport({
     @cInclude("glad/glad.h");
 });
@@ -10,77 +26,57 @@ const ArrayList = std.ArrayList;
 
 const Float = math.types.Float;
 
+const Coord = Block.Coord;
+const CoordPrimitive = Block.CoordPrimitive;
+
 pub const CHUNK_LENGTH = 3;
 pub const CHUNK_SIZE = CHUNK_LENGTH * CHUNK_LENGTH * CHUNK_LENGTH;
 
-// Convenience constants for those reading the source code.
-// Also makes it easy to reason about and debug.
+// Convenience constants to make it easy to reason about and debug.
 pub const VERTEX_SIZE = 3;
-pub const OFFSET_SIZE = 3;
-pub const INDEX_SIZE = 1;
-pub const INSTANCE_SIZE = OFFSET_SIZE + INDEX_SIZE;
+pub const INSTANCE_SIZE = VERTEX_SIZE;
+pub const FACE_SIZE = VERTEX_SIZE * 6;
+pub const CUBE_SIZE = FACE_SIZE * 6;
+pub const BUFFER_SIZE = CHUNK_SIZE * CUBE_SIZE;
 
-// There are a couple of optimizations
-// that I wanted to make but decided against it
-// due to the purpose of this codebase, like:
-//
-// * Packing values where possible into a uint
-pub const vertex = 
+pub const vertex_shader = 
     \\#version 330 core
     \\
-    \\layout (location = 0) in vec3 base;
-    \\layout (location = 1) in vec3 chunk;
-    \\layout (location = 2) in float block;
+    \\layout (location = 0) in vec3 vertex; 
     \\
     \\uniform mat4 perspective;
     \\uniform mat4 view;
-    \\uniform float chunk_dimension;
     \\
     \\void main() {
     \\  mat4 transform = perspective * view;
-    \\  // If block == -1.0, it's essentially turned off.
-    \\  // Give vertex shader a point that will be clipped.
-    \\  gl_Position = block == -1.0 ? vec4(-2.0) :
-    \\                  transform * vec4(base + chunk * chunk_dimension + 
-    \\                      vec3(
-    \\                          mod(block, chunk_dimension),
-    \\                          mod(floor(block / chunk_dimension), chunk_dimension),
-    \\                          floor(block / (chunk_dimension * chunk_dimension))
-    \\                      ), 1.0);
+    \\  gl_Position = transform * vec4(vertex, 1.0);
     \\}
 ;
 
-pub const fragment = 
+pub const fragment_shader = 
     \\#version 330 core
     \\
     \\out vec4 out_color;
     \\
     \\void main() {
-    \\  out_color = vec4(1.0, 1.0, 1.0, 1.0); 
+    \\  out_color = vec4(1.0, 1.0, 1.0, 1.0);
     \\}
 ;
 
 const Self = @This();
 
 noise_applied: bool = false,
+position: CoordPrimitive,
 
 blocks: [CHUNK_SIZE]Block,
-size: usize = CHUNK_SIZE,
+total_vertices: usize = 0,
 
 vao: c_uint,
 vbo: c_uint,
 
-x: isize,
-y: isize,
-z: isize,
-
 pub fn init(
-    ebo: c_uint, 
-    base_vbo: c_uint, 
     options: struct {
-        x: isize = 0,
-        y: isize = 0,
-        z: isize = 0
+        position: CoordPrimitive = CoordPrimitive{0, 0, 0}
     }
 ) Self {
     var vao: c_uint = undefined;
@@ -89,146 +85,139 @@ pub fn init(
     c.glGenVertexArrays(1, &vao);
     c.glGenBuffers(1, &vbo);
 
-    const self: Self = .{
+    var self: Self = .{
         .blocks = [_]Block{Block.init()} ** CHUNK_SIZE,
         .vao = vao,
         .vbo = vbo,
-
-        .x = options.x,
-        .y = options.y,
-        .z = options.z
+        .position = options.position
     };
 
     c.glBindVertexArray(vao);
 
-    c.glBindBuffer(c.GL_ARRAY_BUFFER, base_vbo);
+    c.glBindBuffer(c.GL_ARRAY_BUFFER, vbo);
+    self.paint();
+
+    // Vertex.
     c.glVertexAttribPointer(
         0,
-        3,
+        VERTEX_SIZE,
         c.GL_FLOAT,
         c.GL_FALSE,
-        3 * @sizeOf(Float),
+        @sizeOf(Float) * INSTANCE_SIZE,
         null
     );
     c.glEnableVertexAttribArray(0);
-
-    // Initial buffer will contain
-    // chunk x, y, z which is instanced; and
-    // every index up to CHUNK_SIZE.
-    var initial_buffer = [_]Float{@floatFromInt(self.x), @floatFromInt(self.y), @floatFromInt(self.z)} ++ [_]Float{0} ** CHUNK_SIZE;
-    for (0..CHUNK_SIZE) |index| initial_buffer[index + 3] = @floatFromInt(index);
-    std.debug.assert(initial_buffer.len == OFFSET_SIZE + CHUNK_SIZE);
-
-    c.glBindBuffer(c.GL_ARRAY_BUFFER, vbo);
-    c.glBufferData(
-        c.GL_ARRAY_BUFFER,
-        @sizeOf(Float) * (OFFSET_SIZE + CHUNK_SIZE),
-        @ptrCast(&initial_buffer[0]),
-        c.GL_DYNAMIC_DRAW
-    );
-
-    // Offset of entire chunk, instanced.
-    // Changes once.
-    c.glVertexAttribPointer(
-        1,
-        OFFSET_SIZE,
-        c.GL_FLOAT,
-        c.GL_FALSE,
-        @sizeOf(Float) * (OFFSET_SIZE + INDEX_SIZE * CHUNK_SIZE),
-        null
-    );
-    c.glEnableVertexAttribArray(1);
-    c.glVertexAttribDivisor(1, CHUNK_SIZE);
-
-    // Block index.
-    // We start from zero for the bottom left,
-    // and work our way up to CHUNK_SIZE - 1.
-    const index_offset: *const anyopaque = @ptrFromInt(OFFSET_SIZE * @sizeOf(Float));
-    c.glVertexAttribPointer(
-        2,
-        INDEX_SIZE,
-        c.GL_FLOAT,
-        c.GL_FALSE,
-        @sizeOf(Float) * INDEX_SIZE,
-        index_offset
-    );
-    c.glEnableVertexAttribArray(2);
-    c.glVertexAttribDivisor(2, 1);
-
-    c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, ebo);
-
+    
     return self;
 }
 
 pub fn deinit(self: *Self) void {
+    c.glDeleteBuffers(1, &self.vbo);
+    c.glDeleteBuffers(1, &self.vbo);
     c.glDeleteVertexArrays(1, &self.vao);
 }
 
-pub fn noise(self: *Self, permutations: math.noise.PermutationTable) void {
-    self.noise_applied = true;
-    const range_x: usize = @intCast(self.x);
-    const range_z: usize = @intCast(self.z);
-    for (range_x * CHUNK_LENGTH..range_x * CHUNK_LENGTH + CHUNK_LENGTH) |x| {
-        for (range_z * CHUNK_LENGTH..range_z * CHUNK_LENGTH + CHUNK_LENGTH) |z| {
-            // Noise is between [0, 1].
-            const n = (math.noise.fbm2D(@floatFromInt(x), @floatFromInt(z), permutations, .{}) + 1) * 0.5;
-            const elevation: usize = @intFromFloat(std.math.floor(n * CHUNK_LENGTH));
-            // std.debug.print("{d}\n", .{elevation});
-            for (0..elevation) |y| {
-                // Now trim off blocks until trimmed off blocks = elevation.
-                self.blocks[z * CHUNK_LENGTH + (CHUNK_LENGTH - y) * CHUNK_LENGTH + x].active = false;
-            }
-        }
-    }
+// Return block at (x, y, z).
+pub fn get(self: *Self, x: usize, y: usize, z: usize) Block {
+    return self.blocks[z * CHUNK_LENGTH + y * CHUNK_LENGTH + x];
 }
 
 // Rebuild entire set of vertices.
 // More performance-consuming than update().
 pub fn paint(self: *Self) void {
-    var buffer = [_]Float{@floatFromInt(self.x), @floatFromInt(self.y), @floatFromInt(self.z)} ++ [_]Float{0} ** CHUNK_SIZE;
-    const range_x = @as(usize, @intCast(self.x)) * CHUNK_LENGTH;
-    const range_y = @as(usize, @intCast(self.y)) * CHUNK_LENGTH;
-    const range_z = @as(usize, @intCast(self.z)) * CHUNK_LENGTH;
-    var i: usize = 3;
-
-    for (range_z..range_z + CHUNK_LENGTH) |z| {
-        for (range_y..range_y + CHUNK_LENGTH) |y| {
-            for (range_x..range_x + CHUNK_LENGTH) |x| {
-                if (self.blocks[z * CHUNK_LENGTH + y * CHUNK_LENGTH + x].active) {
-                    buffer[i] = @floatFromInt(i);
-                } else buffer[i] = -1;
-                i += 1;
+    self.total_vertices = 0;
+    var buffer = [_]Float{0} ** BUFFER_SIZE;
+    for (0..CHUNK_LENGTH) |z| {
+        for (0..CHUNK_LENGTH) |y| {
+            for (0..CHUNK_LENGTH) |x| {
+                const offset = CoordPrimitive{@intCast(x), @intCast(y), @intCast(z)};
+                const should_render: bool = true;
+                if (should_render) self.paint_block(&buffer, offset, .{});
             }
         }
     }
-
-    // for (0..CHUNK_SIZE) |index| {
-    //     if (self.blocks[index].active) {
-    //         buffer[index] = @floatFromInt(index);
-    //     } else buffer[index] = -1;
-    // }
-    // const range_x: usize = @intCast(self.x);
-    // const range_y: usize = @intCast(self.y);
-    // const range_z: usize = @intCast(self.z);
-    // var i: usize = 0;
-    // for (range_x * CHUNK_LENGTH..range_x * CHUNK_LENGTH + CHUNK_LENGTH) |x| {
-    //     for (range_y * CHUNK_LENGTH..range_y * CHUNK_LENGTH + CHUNK_LENGTH) |y| {
-    //         for (range_z * CHUNK_LENGTH..range_z * CHUNK_LENGTH + CHUNK_LENGTH) |z| {
-    //             if (self.blocks[z * CHUNK_LENGTH + (CHUNK_LENGTH - y) * CHUNK_LENGTH + x].active) {
-    //                 buffer[i] = @floatFromInt(i);
-    //             } else buffer[i] = -1;
-    //             i += 1;
-    //         }
-    //     }
-    // }
-        
+    // std.debug.print("{d}\n", .{buffer});
     c.glBindBuffer(c.GL_ARRAY_BUFFER, self.vbo);
     c.glBufferData(
         c.GL_ARRAY_BUFFER,
-        @sizeOf(Float) * (OFFSET_SIZE + CHUNK_SIZE),
+        @sizeOf(Float) * BUFFER_SIZE,
         @ptrCast(&buffer[0]),
         c.GL_DYNAMIC_DRAW
     );
+}
+
+// Helper function for paint() for painting individual blocks.
+pub fn paint_block(
+    self: *Self,
+    buffer: *[BUFFER_SIZE]Float,
+    offset: CoordPrimitive,
+    faces: struct {
+        front: bool = true,
+        back: bool = true,
+        top: bool = true,
+        bottom: bool = true,
+        left: bool = true,
+        right: bool = true
+    }
+) void {
+    const base = Coord.sum(self.position, offset);
+    var buffer_offset: usize = @as(
+        usize,
+        @intCast(
+            (offset[0] * CUBE_SIZE) +
+            (offset[1] * CHUNK_LENGTH * CUBE_SIZE) +
+            (offset[2] * CHUNK_LENGTH * CHUNK_LENGTH * CUBE_SIZE)
+        )
+    );
+    std.debug.print("{d} {d}\n", .{base, buffer_offset});
+    if (faces.front) {
+        self.total_vertices += FACE_SIZE;
+        for (Block.FRONT) |v| {
+            const vertex = Coord.sum(base, v);
+            for (vertex, 0..) |axis, i| buffer[buffer_offset + i] = @floatFromInt(axis);
+            buffer_offset += VERTEX_SIZE;
+        }
+    } 
+    if (faces.back) {
+        self.total_vertices += FACE_SIZE;
+        for (Block.BACK) |v| {
+            const vertex = Coord.sum(base, v);
+            for (vertex, 0..) |axis, i| buffer[buffer_offset + i] = @floatFromInt(axis);
+            buffer_offset += VERTEX_SIZE;
+        }
+    }
+    if (faces.top) {
+        self.total_vertices += FACE_SIZE;
+        for (Block.TOP) |v| {
+            const vertex = Coord.sum(base, v);
+            for (vertex, 0..) |axis, i| buffer[buffer_offset + i] = @floatFromInt(axis);
+            buffer_offset += VERTEX_SIZE;
+        }
+    }
+    if (faces.bottom) {
+        self.total_vertices += FACE_SIZE;
+        for (Block.BOTTOM) |v| {
+            const vertex = Coord.sum(base, v);
+            for (vertex, 0..) |axis, i| buffer[buffer_offset + i] = @floatFromInt(axis);
+            buffer_offset += VERTEX_SIZE;
+        }
+    }
+    if (faces.left) {
+        self.total_vertices += FACE_SIZE;
+        for (Block.LEFT) |v| {
+            const vertex = Coord.sum(base, v);
+            for (vertex, 0..) |axis, i| buffer[buffer_offset + i] = @floatFromInt(axis);
+            buffer_offset += VERTEX_SIZE;
+        }
+    }
+    if (faces.right) {
+        self.total_vertices += FACE_SIZE;
+        for (Block.RIGHT) |v| {
+            const vertex = Coord.sum(base, v);
+            for (vertex, 0..) |axis, i| buffer[buffer_offset + i] = @floatFromInt(axis);
+            buffer_offset += VERTEX_SIZE;
+        }
+    }
 }
 
 // Rebuild only changed blocks.
@@ -237,17 +226,15 @@ pub fn paint(self: *Self) void {
 // this is a cheaper operation than paint().
 pub fn update(self: *Self) void {
     _ = self;
-} 
+}
 
 pub fn render(self: *Self, flags: struct {
     mode: c.GLenum = c.GL_TRIANGLES
 }) void {
     c.glBindVertexArray(self.vao);
-    c.glDrawElementsInstanced(
+    c.glDrawArrays(
         flags.mode,
-        @intCast(Block.EDGES.len),
-        c.GL_UNSIGNED_INT,
-        null,
-        CHUNK_SIZE
+        0,
+        @intCast(self.total_vertices),
     );
 }
