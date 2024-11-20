@@ -104,7 +104,9 @@ pub fn deinit(self: *Self) void {
 pub fn addChunk(self: *Self, position: CoordPrimitive) !*Chunk {
     std.debug.assert(self.chunks.get(position) == null);
     const chunk = try self.allocator.create(Chunk);
-    chunk.* = Chunk.init(.{.position = position});
+    chunk.* = Chunk.init(self.allocator, .{.position = position});
+    chunk.noise(self.permutations);
+    try chunk.paint();
     try self.chunks.put(position, chunk);
     return chunk;
 }

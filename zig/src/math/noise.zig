@@ -4,8 +4,8 @@ const vector = @import("vector.zig");
 
 const assert = std.debug.assert;
 
-const Vec2Primitive = vector.Vec2Primitive;
-const Vec2 = vector.Vec2;
+const Vec2 = vector.Vec2(Float);
+const Vec2Primitive = Vec2.Primitive; 
 
 const PERMUTATION_SIZE: usize = 255;
 pub const PermutationTable = [PERMUTATION_SIZE * 2]usize; 

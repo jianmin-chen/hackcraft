@@ -74,7 +74,6 @@ const Self = @This();
 
 kind: BlockKind = .grass,
 active: bool = true,
-render: bool = true,
 
 pub fn init() Self {
     return .{};
