@@ -16,7 +16,7 @@ const CoordPrimitive = Block.CoordPrimitive;
 
 const Self = @This();
 
-pub const CHUNK_LENGTH = 16;
+pub const CHUNK_LENGTH = 24;
 pub const CHUNK_SIZE = CHUNK_LENGTH * CHUNK_LENGTH * CHUNK_LENGTH;
 
 // Convenience constants to make it easy to reason about and debug.

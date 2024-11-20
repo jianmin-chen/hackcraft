@@ -17,27 +17,27 @@ pub fn build(b: *Build) !void {
         .root_source_file = b.path("src/math/root.zig"),
     });
 
-    const font = b.addExecutable(.{
+    const atlas_gen = b.addExecutable(.{
         .name = "atlas_gen",
-        .root_source_file = b.path("src/module/font.zig"),
+        .root_source_file = b.path("src/module/atlas_gen.zig"),
         .target = target,
         .optimize = optimize
     });
 
-    font.root_module.addImport("math", math);
+    atlas_gen.root_module.addImport("math", math);
 
-    font.addIncludePath(Build.LazyPath{.cwd_relative = "/opt/homebrew/Cellar/freetype/2.13.3/include/freetype2/"});
-    font.addLibraryPath(Build.LazyPath{.cwd_relative = "/opt/homebrew/Cellar/freetype/2.13.3/lib"});
+    atlas_gen.addIncludePath(Build.LazyPath{.cwd_relative = "/opt/homebrew/Cellar/freetype/2.13.3/include/freetype2/"});
+    atlas_gen.addLibraryPath(Build.LazyPath{.cwd_relative = "/opt/homebrew/Cellar/freetype/2.13.3/lib"});
 
-    font.addIncludePath(b.path("./deps"));
-    font.addCSourceFile(.{
+    atlas_gen.addIncludePath(b.path("./deps"));
+    atlas_gen.addCSourceFile(.{
         .file = b.path("./deps/stb.c"),
         .flags = &.{}
     });
 
-    font.linkSystemLibrary("freetype");
+    atlas_gen.linkSystemLibrary("freetype");
     
-    b.installArtifact(font);
+    b.installArtifact(atlas_gen);
 
     main.root_module.addImport("math", math);
 

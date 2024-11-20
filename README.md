@@ -1,6 +1,6 @@
-Get a sense of how graphics programming works behind the scenes by writing a little clone of Minecraft in 1k lines of JavaScript! Zig source code that can compile to WASM to build for both cross-platform OpenGL and WebGL is available and feature-complete, too, if you're a low-levels person!
+Get a sense of how graphics programming works behind the scenes by writing a little clone of Minecraft in 1k lines of JavaScript! Zig source code that can compile to WASM to build for both cross-platform OpenGL and WebGL is available and feature-complete, too, if you're a low-levels person! 
 
-Features:
+Written in JavaScript and Zig 0.13. Features:
 
 * Add and remove blocks
 * Textures
