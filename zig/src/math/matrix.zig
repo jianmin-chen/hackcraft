@@ -66,6 +66,10 @@ pub const Matrix = struct {
         };
     }
 
+    pub fn orthographic(
+
+    ) MatrixPrimitive {}
+
     pub fn perspective(
         fov: Float,
         aspect: Float,

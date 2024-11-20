@@ -17,6 +17,12 @@ pub fn build(b: *Build) !void {
         .root_source_file = b.path("src/math/root.zig"),
     });
 
+    const shader = b.addModule("shader", .{
+        .root_source_file = b.path("src/module/shader.zig"),
+    });
+
+    shader.addIncludePath(b.path("./deps"));
+
     const atlas_gen = b.addExecutable(.{
         .name = "atlas_gen",
         .root_source_file = b.path("src/module/atlas_gen.zig"),
@@ -40,6 +46,7 @@ pub fn build(b: *Build) !void {
     b.installArtifact(atlas_gen);
 
     main.root_module.addImport("math", math);
+    main.root_module.addImport("shader", shader);
 
     main.addIncludePath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/glfw/3.4/include" });
     main.addLibraryPath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/glfw/3.4/lib" });

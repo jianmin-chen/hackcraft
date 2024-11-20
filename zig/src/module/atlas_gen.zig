@@ -123,11 +123,11 @@ pub fn main() !void {
 
     var characters = fontAtlas(allocator, ft, options) catch |err| {
         switch (err) {
-            .InvalidFont => std.debug.print("Unable to load {s}.\n", .{options.input_path}),
-            .InvalidCharacter => std.debug.print("{s} does not support provided Unicode range(s).\n", .{options.input_path}),
-            .OutOfMemory => std.debug.print("Unable to allocate memory for generating font atlas.\n", .{}),
-            .AtlasWriteError => std.debug.print("Unable to create font atlas.\n", .{}),
-            .JSONWriteError => std.debug.print("Unable to create font atlas descriptor.\n", .{})
+            Error.InvalidFont => std.debug.print("Unable to load {s}.\n", .{options.input_path}),
+            Error.InvalidCharacter => std.debug.print("{s} does not support provided Unicode range(s).\n", .{options.input_path}),
+            Error.OutOfMemory => std.debug.print("Unable to allocate memory for generating font atlas.\n", .{}),
+            Error.AtlasWriteError => std.debug.print("Unable to create font atlas.\n", .{}),
+            Error.JSONWriteError => std.debug.print("Unable to create font atlas descriptor.\n", .{})
         }
         return;
     };

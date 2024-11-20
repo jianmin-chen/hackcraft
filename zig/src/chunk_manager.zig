@@ -8,7 +8,7 @@ const std = @import("std");
 const block = @import("block.zig");
 const Chunk = @import("chunk.zig");
 const math = @import("math");
-const Shader = @import("shader.zig");
+const Shader = @import("shader");
 
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;

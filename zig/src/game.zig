@@ -22,7 +22,7 @@ const Self = @This();
 
 pub const Options = struct {
     internal_debug: bool = true,
-    debug: bool = true,
+    debug: bool = false,
 
     // Values for randomness.
     seed: u64 = 12493874,

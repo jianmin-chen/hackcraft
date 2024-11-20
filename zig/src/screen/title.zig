@@ -1,0 +1,1 @@
+// Flavor text is either "How? Scroll down!" or "How? Go to hack.club/hackcraft"
