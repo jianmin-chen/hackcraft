@@ -25,7 +25,7 @@ pub const Options = struct {
     debug: bool = false,
 
     // Values for randomness.
-    seed: u64 = 12493874,
+    seed: u64 = 12384824923,
     permutation: noise.PermutationTable = undefined,
 
     initial_width: c_int = 1024,
@@ -43,7 +43,7 @@ pub const Options = struct {
         .camera = Vec3Primitive{0, 0, 0},
         .direction = Vec3Primitive{0, 0, 1},
         
-        .speed = 2.5
+        .speed = 5
     },
 
     pub fn default() Options {
@@ -130,6 +130,17 @@ pub fn deinit(self: *Self) void {
 pub fn loop(self: *Self) !void {
     const chunk = try self.chunks.addChunk(math.vector.Vec3(isize).Primitive{0, 0, 0});
     try self.chunks.render_chunks.put(math.vector.Vec3(isize).Primitive{0, 0, 0}, chunk);
+    const z = try self.chunks.addChunk(math.vector.Vec3(isize).Primitive{0, 0, 1});
+    try self.chunks.render_chunks.put(z.position, z);
+    const y =try self.chunks.addChunk(math.vector.Vec3(isize).Primitive{0, 0, -1});
+    try self.chunks.render_chunks.put(y.position, y);
+    const x =try self.chunks.addChunk(math.vector.Vec3(isize).Primitive{-1, 0, -1});
+    try self.chunks.render_chunks.put(x.position, x);
+    const a =try self.chunks.addChunk(math.vector.Vec3(isize).Primitive{-1, 0, 0});
+    try self.chunks.render_chunks.put(a.position, a);
+    const b =try self.chunks.addChunk(math.vector.Vec3(isize).Primitive{-1, 0, 1});
+    try self.chunks.render_chunks.put(b.position, b);
+    try self.chunks.render_chunks.put(math.vector.Vec3(isize).Primitive{1, 0, -1}, try self.chunks.addChunk(math.vector.Vec3(isize).Primitive{1, 0, -1}));
     self.adjustPerspective();
     const view_location = self.chunks.chunk_shader.uniform("view");
 

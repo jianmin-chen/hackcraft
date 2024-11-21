@@ -19,12 +19,12 @@ const GRADIENTS = [_]Vec2Primitive{
     Vec2Primitive{-1, -1}
 };
 
-pub fn permutations(seed: u64) PermutationTable {
+pub fn permutations(_: u64) PermutationTable {
     var perm: PermutationTable = [_]usize{0} ** (PERMUTATION_SIZE * 2);
     for (0..PERMUTATION_SIZE) |i| perm[i] = i;
 
     // Shuffle values using Fisher-Yates.
-    var prng = std.rand.DefaultPrng.init(seed);
+    var prng = std.rand.DefaultPrng.init(std.crypto.random.int(u64));
     const random = prng.random();
     var curr_i = PERMUTATION_SIZE - 1;
     while (curr_i > 0) : (curr_i -= 1)  {
@@ -58,8 +58,8 @@ pub fn noise2D(x: Float, y: Float, permutation: PermutationTable) Float {
     const br = Vec2Primitive{x - x_floored - 1, y - y_floored - 1};
 
     // Wrap around values of x and y for lookup in permutation table.
-    const hash_x = @as(usize, @intFromFloat(x_floored)) & PERMUTATION_SIZE;
-    const hash_y = @as(usize, @intFromFloat(y_floored)) & PERMUTATION_SIZE;
+    const hash_x: usize = @intCast(@as(isize, @intFromFloat(x_floored)) & PERMUTATION_SIZE - 1);
+    const hash_y: usize = @intCast(@as(isize, @intFromFloat(y_floored)) & PERMUTATION_SIZE - 1);
 
     const tl_permutation = permutation[permutation[hash_x] + hash_y];
     const tr_permutation = permutation[permutation[hash_x + 1] + hash_y];
@@ -112,7 +112,6 @@ pub fn fbm2D(
         n += noise2D(x * frequency, y * frequency, permutation) * amplitude;
         frequency *= options.delta_frequency;
         amplitude *= options.delta_amplitude;
-        assert(-1 < n and n < 1);
     }
     return n;
 }

@@ -39,7 +39,7 @@ pub fn Vec3(comptime T: type) type {
             return Vec3Primitive{0, 0, 0};
         }
 
-        pub fn scalarSum(a: Vec3Primitive, n: Float) Vec3Primitive {
+        pub fn scalarSum(a: Vec3Primitive, n: T) Vec3Primitive {
             return Vec3Primitive{
                 a[0] + n,
                 a[1] + n,
@@ -47,7 +47,7 @@ pub fn Vec3(comptime T: type) type {
             };
         }
 
-        pub fn scalarProduct(a: Vec3Primitive, n: Float) Vec3Primitive {
+        pub fn scalarProduct(a: Vec3Primitive, n: T) Vec3Primitive {
             return Vec3Primitive{
                 a[0] * n,
                 a[1] * n,
