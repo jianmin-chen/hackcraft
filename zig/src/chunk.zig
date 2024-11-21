@@ -16,7 +16,7 @@ const CoordPrimitive = Block.CoordPrimitive;
 
 const Self = @This();
 
-pub const CHUNK_LENGTH = 24;
+pub const CHUNK_LENGTH = 16;
 pub const CHUNK_SIZE = CHUNK_LENGTH * CHUNK_LENGTH * CHUNK_LENGTH;
 
 // Convenience constants to make it easy to reason about and debug.
@@ -182,6 +182,21 @@ pub fn block_neighbors(self: *Self, block: CoordPrimitive) !AutoHashMap(CoordPri
     return neighbors;
 }
 
+// Build set of vertices.
+//
+// Here we also perform some chunk optimizations.
+// There are some we haven't done, including greedy meshing and level of detail.
+pub fn npaint(self: *Self) !void {
+    self.total_vertices = 0;
+    // var buffer = [_]Float{0} ** BUFFER_SIZE;
+    for (0..CHUNK_SIZE) |i| {
+        const block = self.blocks[i];
+        
+        // If a block isn't active, skip.
+        if (!block.active) continue;
+    }
+}
+
 // Rebuild entire set of vertices on change.
 //
 // Here we also perform some chunk optimizations.
@@ -190,16 +205,16 @@ pub fn paint(self: *Self) !void {
     self.total_vertices = 0;
     var buffer = [_]Float{0} ** BUFFER_SIZE;
     for (0..CHUNK_LENGTH) |z| {
-        for (0..CHUNK_LENGTH) |y| {
-            for (0..CHUNK_LENGTH) |x| {
-                const block = self.get(x, y, z);
+        for (0..CHUNK_LENGTH) |x| {
+            for (0..CHUNK_LENGTH - 1) |y| {
+                const block = self.get(x, CHUNK_LENGTH - y - 1, z);
                 
                 // If a block isn't active, skip.
                 if (!block.active) continue;
 
                 var should_render: bool = false;
-                const offset = CoordPrimitive{@intCast(x), @intCast(y), @intCast(z)};
-                const faces: Faces = .{};
+                const offset = CoordPrimitive{@intCast(x), @intCast(CHUNK_LENGTH - y - 1), @intCast(z)};
+                var faces: Faces = .{};
                 var neighbors = try self.block_neighbors(offset);
                 defer neighbors.deinit();
 
@@ -208,19 +223,28 @@ pub fn paint(self: *Self) !void {
                 //
                 // Else, don't render cubes that have neighbors that are all active,
                 // regardless of whether or not they're being rendered.
-                if (x == 0 or y == 0 or z == 0 or x == CHUNK_LENGTH - 1 or y == CHUNK_LENGTH - 1 or z == CHUNK_LENGTH - 1) {
+                if (neighbors.count() != 26) {
                     should_render = true;
-                } else if (neighbors.count() != 26) should_render = true;
+                }
 
                 if (should_render) {
                     // Determine faces to render by checking the neighbors of faces;
                     // this is basically merging the faces.
-                    //     faces.left = false;
-                    // if (neighbors.get(Coord.sum(offset, CoordPrimitive{1, 0, 0})) != null)
-                    //     faces.right = false;
+                    if (neighbors.get(Coord.sum(offset, CoordPrimitive{0, 0, -1})) != null)
+                        faces.front = false;
+                    if (neighbors.get(Coord.sum(offset, CoordPrimitive{0, 0, 1})) != null)
+                        faces.back = false;
+                    if (neighbors.get(Coord.sum(offset, CoordPrimitive{0, 1, 0})) != null)
+                        faces.top = false;
+                    if (neighbors.get(Coord.sum(offset, CoordPrimitive{0, -1, 0})) != null)
+                        faces.bottom = false;
+                    if (neighbors.get(Coord.sum(offset, CoordPrimitive{-1, 0, 0})) != null)
+                        faces.left = false;
+                    if (neighbors.get(Coord.sum(offset, CoordPrimitive{1, 0, 0})) != null)
+                        faces.right = false;
                     const base_vertex = Coord.sum(Coord.scalarProduct(self.position, CHUNK_LENGTH), offset);
                     self.paint_block(&buffer, base_vertex, faces);
-                }
+                } else break;
             }
         }
     }

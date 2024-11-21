@@ -50,8 +50,8 @@ pub const Options = struct {
         } else if (std.mem.eql(u8, opt_arg, "--output")) {
             if (self.output_path != null) return OptionError.InvalidOption;
             self.output_path = arg;
-        } else if (std.mem.eql(u8, opt_arg, "--json-output")) {
-            if (self.output_path != null) return OptionError.InvalidOption;
+        } else if (std.mem.eql(u8, opt_arg, "--output-json")) {
+            if (self.output_json_path != null) return OptionError.InvalidOption;
             self.output_json_path = arg;
         } else return OptionError.InvalidOption;
     }
@@ -110,7 +110,7 @@ pub fn main() !void {
     const allocator = gpa.allocator();
 
     var options = Options.processArgs(allocator) catch {
-        std.debug.print("Usage: atlas_gen [path] --size [size=14] --output [output=./atlas.png] --json-output [json-output=./atlas.json]\n", .{});
+        std.debug.print("Usage: atlas_gen [path] --size [size=14] --output [output=./atlas.png] --output-json [output-json=./atlas.json]\n", .{});
         return;
     };
     defer options.deinit();

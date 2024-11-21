@@ -33,7 +33,7 @@ pub const Options = struct {
 
     fov: Float = 45,
     near: Float = 0.1,
-    far: Float = 144,
+    far: Float = 1600,
 
     mouse_sensitivity: Float = 0.1,
 
@@ -116,7 +116,7 @@ pub fn init(allocator: Allocator, options: Options) !Self {
             allocator,
             options.permutation,
             options.spawn_player.position,
-            @intFromFloat(options.far / CHUNK_LENGTH)   
+            12 
         ),
         .mouse = .{}
     };
@@ -128,19 +128,6 @@ pub fn deinit(self: *Self) void {
 }
 
 pub fn loop(self: *Self) !void {
-    const chunk = try self.chunks.addChunk(math.vector.Vec3(isize).Primitive{0, 0, 0});
-    try self.chunks.render_chunks.put(math.vector.Vec3(isize).Primitive{0, 0, 0}, chunk);
-    const z = try self.chunks.addChunk(math.vector.Vec3(isize).Primitive{0, 0, 1});
-    try self.chunks.render_chunks.put(z.position, z);
-    const y =try self.chunks.addChunk(math.vector.Vec3(isize).Primitive{0, 0, -1});
-    try self.chunks.render_chunks.put(y.position, y);
-    const x =try self.chunks.addChunk(math.vector.Vec3(isize).Primitive{-1, 0, -1});
-    try self.chunks.render_chunks.put(x.position, x);
-    const a =try self.chunks.addChunk(math.vector.Vec3(isize).Primitive{-1, 0, 0});
-    try self.chunks.render_chunks.put(a.position, a);
-    const b =try self.chunks.addChunk(math.vector.Vec3(isize).Primitive{-1, 0, 1});
-    try self.chunks.render_chunks.put(b.position, b);
-    try self.chunks.render_chunks.put(math.vector.Vec3(isize).Primitive{1, 0, -1}, try self.chunks.addChunk(math.vector.Vec3(isize).Primitive{1, 0, -1}));
     self.adjustPerspective();
     const view_location = self.chunks.chunk_shader.uniform("view");
 
@@ -172,7 +159,7 @@ pub fn loop(self: *Self) !void {
         const view = Matrix.inverse(camera);
         c.glUniformMatrix4fv(view_location, 1, c.GL_FALSE, @ptrCast(&view[0]));
 
-        self.chunks.update(@floatCast(self.dt));
+        try self.chunks.update(@floatCast(self.dt));
 
         self.chunks.render();
 

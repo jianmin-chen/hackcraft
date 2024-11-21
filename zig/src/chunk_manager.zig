@@ -56,7 +56,7 @@ pub fn init(
     initial_spawn: Vec3Primitive,
     render_radius: usize
 ) !Self {
-    const self: Self = .{
+    var self: Self = .{
         .allocator = allocator,
 
         .permutations = permutations,
@@ -80,7 +80,19 @@ pub fn init(
         @intFromFloat(std.math.floor(initial_spawn[1])),
         @intFromFloat(std.math.floor(initial_spawn[2]))
     };
-    _ = in_chunk;
+    var span_z: isize = @as(isize, @intCast(render_radius)) * -1;
+    while (span_z < render_radius) : (span_z += 1) {
+        var span_x: isize = @as(isize, @intCast(render_radius)) * -1;
+        while (span_x < render_radius) : (span_x += 1) {
+            const position = Coord.sum(in_chunk, CoordPrimitive{span_x, 0, span_z});
+            const chunk = try self.addChunk(position);
+            chunk.noise(self.permutations);
+            try chunk.paint();
+            // try self.paint_chunks.append(chunk);
+            try self.render_chunks.put(position, chunk);
+        }
+    }
+    std.debug.print("{any}\n", .{self.render_chunks.count()});
 
     return self;
 }
@@ -105,15 +117,17 @@ pub fn addChunk(self: *Self, position: CoordPrimitive) !*Chunk {
     std.debug.assert(self.chunks.get(position) == null);
     const chunk = try self.allocator.create(Chunk);
     chunk.* = Chunk.init(self.allocator, .{.position = position});
-    chunk.noise(self.permutations);
-    try chunk.paint();
     try self.chunks.put(position, chunk);
     return chunk;
 }
 
-pub fn update(self: *Self, max_time: Float) void {
-    _ = self;
+pub fn update(self: *Self, max_time: Float) !void {
     _ = max_time;
+    if (self.paint_chunks.items.len != 0) {
+        var chunk = self.paint_chunks.pop();
+        // chunk.noise(self.permutations);
+        try chunk.paint();
+    }
 }
 
 pub fn render(self: *Self) void {
