@@ -2,9 +2,6 @@
 // This doesn't handle surrogate pairs, which means no emojis, for example.
 // We also don't do any packing.
 //
-// We use the standard JSON library. Unfortunately it's not well documented (yet!),
-// so I used type coercion as the easiest way to get it working.
-//
 // You can also use this like:
 // 
 // const atlas_gen = @import("atlas_gen.zig");
@@ -13,7 +10,7 @@
 // defer std.debug.assert(atlas_gen.cleanup(ft) == 0);
 // const options: atlas_gen.Options = .{};
 // const characters: try atlas_gen.fontAtlas(allocator, ft, options);
-// defer characters.dienit();
+// defer characters.deinit();
 // // Load texture from options.input_path, and use that in conjunction with `characters`.
 
 const c = @cImport({
@@ -131,7 +128,8 @@ pub fn main() !void {
         }
         return;
     };
-    characters.deinit();
+    for (characters.values()) |character| allocator.free(character.grapheme);
+    defer characters.deinit(allocator);
 }
 
 pub fn setup() !c.FT_Library {
@@ -165,8 +163,11 @@ fn fontAtlas(allocator: Allocator, ft: c.FT_Library, options: Options) Error!Cha
     const atlas = allocator.alloc(u8, atlas_size * atlas_size) catch return Error.OutOfMemory;
     defer allocator.free(atlas);
 
-    var characters = Characters.init(allocator) catch return Error.OutOfMemory;
-    errdefer characters.deinit();
+    var characters = try Character.Map(allocator);
+    errdefer {
+        for (characters.values()) |character| allocator.free(character.grapheme);
+        characters.deinit(allocator);
+    }
 
     for (options.codepoint_ranges.items) |codepoint_range| {
         var x: usize = 0;
@@ -206,7 +207,7 @@ fn fontAtlas(allocator: Allocator, ft: c.FT_Library, options: Options) Error!Cha
                 .advance_y = glyph.advance.y >> 6
             };
             _ = std.unicode.utf8Encode(codepoint, character.grapheme) catch return Error.InvalidCharacter;
-            characters.map.put(allocator, character.grapheme, character) catch return Error.OutOfMemory;
+            characters.put(allocator, character.grapheme, character) catch return Error.OutOfMemory;
 
             x += glyph.bitmap.width + 1;
         }
@@ -236,7 +237,7 @@ fn fontAtlas(allocator: Allocator, ft: c.FT_Library, options: Options) Error!Cha
     if (options.output_json_path) |output_json_path| {
         var json_output = ArrayList(u8).init(allocator);
         defer json_output.deinit();
-        const as_json: *json.ArrayHashMap(Character) = @ptrCast(&characters.map);
+        const as_json: *json.ArrayHashMap(Character) = @ptrCast(&characters);
         json.stringify(&as_json, .{}, json_output.writer()) catch return Error.JSONWriteError;
 
         if (std.fs.path.isAbsolute(output_json_path)) {

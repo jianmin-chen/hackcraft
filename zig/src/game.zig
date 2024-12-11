@@ -1,12 +1,15 @@
 const c = @cImport({
     @cInclude("glad/glad.h");
     @cInclude("GLFW/glfw3.h");
+    @cInclude("stb_image.h");
 });
 const std = @import("std");
 const math = @import("math");
 const CHUNK_LENGTH = @import("chunk.zig").CHUNK_LENGTH;
 const ChunkManager = @import("chunk_manager.zig");
 const Player = @import("player.zig");
+const Text = @import("ui/text.zig");
+const Texture = @import("ui/texture.zig");
 
 const Allocator = std.mem.Allocator;
 const AutoHashMap = std.AutoHashMap;
@@ -64,6 +67,7 @@ height: c_int,
 
 dt: f64 = 0,
 
+// default_text: Text,
 player: Player,
 chunks: ChunkManager,
 mouse: struct {
@@ -74,7 +78,7 @@ mouse: struct {
 },
 
 pub fn init(allocator: Allocator, options: Options) !Self {
-    if (c.glfwInit() == c.GL_FALSE) @panic("Unable to initialize GLFW");
+    if (c.glfwInit() == c.GL_FALSE) @panic("Unable to initialize GLFW.");
     c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MAJOR, 3);
     c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MINOR, 3);
     if (comptime @import("builtin").os.tag == .macos)
@@ -89,7 +93,7 @@ pub fn init(allocator: Allocator, options: Options) !Self {
     );
     if (window == null) {
         c.glfwTerminate();
-        @panic("Unable to open window through GLFW");
+        @panic("Unable to open window through GLFW.");
     }
     c.glfwMakeContextCurrent(window);
 
@@ -97,11 +101,9 @@ pub fn init(allocator: Allocator, options: Options) !Self {
         c.gladLoadGLLoader(
             @ptrCast(&c.glfwGetProcAddress)
         ) == c.GL_FALSE
-    ) @panic("Unable to locate OpenGL API pointers with glad");
+    ) @panic("Unable to locate OpenGL API pointers with glad.");
 
     // c.glEnable(c.GL_CULL_FACE);
-    if (options.internal_debug) 
-        c.glPolygonMode(c.GL_FRONT_AND_BACK, c.GL_LINE);
 
     return .{
         .allocator = allocator,
@@ -111,6 +113,7 @@ pub fn init(allocator: Allocator, options: Options) !Self {
         .width = options.initial_width,
         .height = options.initial_height,
 
+        // .default_text = try Text.from(allocator, "assets/atlas.png", "assets/atlas.json", .{}),
         .player = options.spawn_player,
         .chunks = try ChunkManager.init(
             allocator,
@@ -124,12 +127,15 @@ pub fn init(allocator: Allocator, options: Options) !Self {
 
 pub fn deinit(self: *Self) void {
     c.glfwTerminate();
+    // self.default_text.deinit();
     self.chunks.deinit();
 }
 
 pub fn loop(self: *Self) !void {
     self.adjustPerspective();
     const view_location = self.chunks.chunk_shader.uniform("view");
+
+    // try self.default_text.add("helloworld", 0, 0, .{});
 
     var prev: f64 = 0;
     var elapsed: f64 = 0;
@@ -161,7 +167,11 @@ pub fn loop(self: *Self) !void {
 
         try self.chunks.update(@floatCast(self.dt));
 
+        if (self.options.internal_debug) c.glPolygonMode(c.GL_FRONT_AND_BACK, c.GL_LINE);
         self.chunks.render();
+        if (self.options.internal_debug) c.glPolygonMode(c.GL_FRONT_AND_BACK, c.GL_FILL);
+
+        // self.default_text.render();
 
         c.glfwSwapBuffers(self.window);
         c.glfwPollEvents();

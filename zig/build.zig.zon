@@ -1,6 +1,11 @@
 .{
-    .name = "hackcraft",
-    .version = "0.0.1",
-    .paths = .{"src"},
-    .dependencies = .{}
+    .name = "hackcraft", 
+    .version = "0.0.1", 
+    .paths = .{"src"}, 
+    .dependencies = .{
+    .@"json.zig" = .{
+            .url = "git+https://github.com/jianmin-chen/json.zig?ref=main#0d5cd4d5724b8697d004c45d9835a0afc9b71f5d",
+            .hash = "1220bd2398df4650f4e91369be976441789339457ed79b57c3f3699d864e58d7adf4",
+        }
+    } 
 }

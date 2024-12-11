@@ -48,6 +48,11 @@ pub fn build(b: *Build) !void {
     main.root_module.addImport("math", math);
     main.root_module.addImport("shader", shader);
 
+    // External dependencies.
+    const json = b.dependency("json.zig", .{.target = target, .optimize = optimize});
+
+    main.root_module.addImport("json", json.module("json"));
+
     main.addIncludePath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/glfw/3.4/include" });
     main.addLibraryPath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/glfw/3.4/lib" });
 

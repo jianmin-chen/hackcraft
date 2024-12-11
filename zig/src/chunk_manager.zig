@@ -87,8 +87,8 @@ pub fn init(
             const position = Coord.sum(in_chunk, CoordPrimitive{span_x, 0, span_z});
             const chunk = try self.addChunk(position);
             chunk.noise(self.permutations);
-            try chunk.paint();
-            // try self.paint_chunks.append(chunk);
+            try chunk.npaint();
+            try self.paint_chunks.append(chunk);
             try self.render_chunks.put(position, chunk);
         }
     }

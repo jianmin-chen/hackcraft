@@ -2,12 +2,13 @@ Get a sense of how graphics programming works behind the scenes by writing a lit
 
 Written in JavaScript and Zig 0.13. Features:
 
-* Add and remove blocks
+* Add and remove many different kinds of blocks, and add your own with a texture atlas.
 * Textures
 * Terrain and cloud generation
 * Lighting: block-based propagation system &larr; ambient occlusion
 * Day/light cycle
 * Server for running multiplayer games
+* Minecraft-styled UI, done entirely on the GPU along with the rest of the game.
 
 More about the book:
 
@@ -25,3 +26,7 @@ The Zig codebase
 * `/ssg` contains the static site generator I wrote to generate the site. If you're interested in this, I wrote a little [appendix]() for the book on it!
 * `/tool` contains various Zig programs I wrote to generate resources, such as the file atlas.
 * `/zig` contains the Zig version.
+
+## Acknowledgements
+
+Acknowledgements are [here]().

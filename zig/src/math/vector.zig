@@ -87,3 +87,10 @@ pub fn Vec3(comptime T: type) type {
         }
     };
 }
+
+pub fn Vec4(comptime T: type) type {
+    const Vec4Primitive = [4]T;
+    return struct {
+        pub const Primitive = Vec4Primitive;
+    };
+}
